@@ -108,6 +108,28 @@ void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
   iuart_->update_baudrate(baud_rate);
 }
 
+void DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
+  uint16_t value;
+  if (addressSize < 4 && physicalAddress < 0x80 && logicalAddress < 0x80)
+  {
+      value = (uint16_t)(logicalAddress << 7 | physicalAddress);
+  }
+  else if (physicalAddress < 0x4000 && logicalAddress < 0x4000)
+  {
+      value = (uint16_t)(logicalAddress << 14 | physicalAddress);
+  }
+  else
+  {
+      value = 0;
+  }
+  this->set_server_address(value);  
+  cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
+            this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
+            this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);  
+
+  this->set_next_state_delayed_(2000, State::OPEN_SESSION);
+}
+
 void DlmsCosemComponent::setup() {
   ESP_LOGD(TAG, "setup");
 
