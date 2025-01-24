@@ -253,8 +253,6 @@ void DlmsCosemComponent::loop() {
         return;
       }
       
-      this->has_error = false;
-      
       // the folowing basic algorithm to be implemented to read DLMS packet
       // first version, no retries
       // 1. receive proper hdlc frame
@@ -317,7 +315,8 @@ void DlmsCosemComponent::loop() {
       this->stats_.connections_tried_++;
       session_started_ms = millis();
       this->log_state_();
-
+      this->has_error = false;
+      
       this->clear_rx_buffers_();
       request_iter = this->sensors_.begin();
 
