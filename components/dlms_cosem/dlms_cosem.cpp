@@ -315,8 +315,6 @@ void DlmsCosemComponent::loop() {
       this->stats_.connections_tried_++;
       session_started_ms = millis();
       this->log_state_();
-      this->has_error = false;
-      
       this->clear_rx_buffers_();
       request_iter = this->sensors_.begin();
 
