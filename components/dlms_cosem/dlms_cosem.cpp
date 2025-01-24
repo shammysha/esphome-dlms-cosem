@@ -239,7 +239,7 @@ void DlmsCosemComponent::loop() {
 
       if (this->check_rx_timeout_()) {
         ESP_LOGE(TAG, "RX timeout.");
-        this->has_errors = true;
+        this->has_error = true;
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
         this->stats_.invalid_frames_ += reading_state_.err_invalid_frames;
         // if mission critical
@@ -253,7 +253,7 @@ void DlmsCosemComponent::loop() {
         return;
       }
       
-      this->has_errors = false;
+      this->has_error = false;
       
       // the folowing basic algorithm to be implemented to read DLMS packet
       // first version, no retries
