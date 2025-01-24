@@ -123,6 +123,7 @@ void DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t
       value = 0;
   }
   this->set_server_address(value);  
+  cl_clear(&dlms_settings_);
   cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
             this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
             this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);  
