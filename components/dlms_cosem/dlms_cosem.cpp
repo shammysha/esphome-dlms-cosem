@@ -108,7 +108,7 @@ void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
   iuart_->update_baudrate(baud_rate);
 }
 
-void DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
+uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
   uint16_t value;
   if (addressSize < 4 && physicalAddress < 0x80 && logicalAddress < 0x80)
   {
@@ -129,6 +129,8 @@ void DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t
             this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);  
 
   this->set_next_state_delayed_(2000, State::OPEN_SESSION);
+
+  return value
 }
 
 void DlmsCosemComponent::setup() {
