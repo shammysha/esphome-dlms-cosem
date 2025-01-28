@@ -61,7 +61,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void register_sensor(DlmsCosemSensorBase *sensor);
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
 
-  void update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+  uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
   bool has_error{false};
 
  protected:
