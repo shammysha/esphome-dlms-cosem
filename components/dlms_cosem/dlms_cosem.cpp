@@ -130,7 +130,7 @@ uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint
 
   this->set_next_state_delayed_(2000, State::OPEN_SESSION);
 
-  return value
+  return value;
 }
 
 void DlmsCosemComponent::setup() {
