@@ -1,3 +1,52 @@
+# esphome-dlms-cosem (fork) (Адаптация под веселых отечественных производителей. Нартис в частности)
+1. Добавлена проверка значений текстовых сенсоров на предмет cp1251. (Нартис И100-W112, "Тип устройства")
+
+    На заметку конфиг для Нартис И100-W112:
+    * Пароль администрирования: 0000000100000001
+    * Пароль чтения: 00000001
+    * Логический адрес: 1
+    * Физический адрес: 17
+    * Размер адреса: 2
+
+2. Добавлена функция update_server_address(logical_device, physical_device, addr_len)
+   Можно использовать в lambda для сканирования адресов устройства. 
+  
+  ```
+  globals:
+    - id: logaddr
+      type: uint16_t
+      initial_value: '1'
+      
+    - id: phyaddr
+      type: uint16_t
+      initial_value: '1'
+  
+    - id: servaddr
+      type: uint16_t
+      initial_value: '1' 
+
+  interval:
+    interval: 10s
+    then:
+      - lambda: |-
+         if (id(energo_01)->has_error) {
+            if (id(phyaddr) < 255) {
+              id(phyaddr)++;
+            } else {
+              id(logaddr)++;
+              id(phyaddr) = 1;
+            }
+            id(energo_01)->has_error = false;
+            id(servaddr) = id(energo_01)->update_server_address(id(logaddr), id(phyaddr), 2);
+         }
+      - lambda: |-
+          ESP_LOGI("main", "Logical address: %d, physical address: %d, server address: %d", (int) id(logaddr), (int) id(phyaddr), (int) id(servaddr));
+```
+
+
+
+
+
 # esphome-dlms-cosem (development in progress)
 Подключение EspHome к счетчикам электроэнергии по протоколу DLMS/COSEM/СПОДЭС (Энергомера CE207, CE307, CE308 и другие) по rs485. 
 
