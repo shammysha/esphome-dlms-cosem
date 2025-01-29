@@ -294,7 +294,7 @@ void DlmsCosemComponent::loop() {
         //  data in multiple frames.
         //  never tested, always got complete reply so far
         //  in theory we just keep reading until full reply is received.
-        //  return;
+        return;
       }
 
       // if buffers_.reply.complete != 0
