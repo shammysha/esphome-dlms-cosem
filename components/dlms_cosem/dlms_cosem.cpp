@@ -290,7 +290,7 @@ void DlmsCosemComponent::loop() {
 
       if (buffers_.reply.complete == 0) {
         ESP_LOGD(TAG, "DLMS Reply not complete, need more HDLC frames. Continue reading.");
-        // buffers_.reply.complete = 1;
+        buffers_.reply.complete = 1;
         //  data in multiple frames.
         //  never tested, always got complete reply so far
         //  in theory we just keep reading until full reply is received.
