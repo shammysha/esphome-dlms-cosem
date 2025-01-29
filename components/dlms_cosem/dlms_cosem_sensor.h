@@ -113,7 +113,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
     bool has_got_scale_and_unit() override { return true; }
 
     void set_value(const char *value) {
-      uint8_t size = sizeof(&value); 
+      uint8_t size = std::strlen((char *) &value); 
       ESP_LOGV("SENS", "SIZE OF DATA: %d", size); 
       char res[size*3+1]; 
      
