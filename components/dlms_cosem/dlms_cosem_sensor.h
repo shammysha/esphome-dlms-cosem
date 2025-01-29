@@ -113,7 +113,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
     bool has_got_scale_and_unit() override { return true; }
 
     void set_value(const char *value) {
-      char res[sizeof(&value)*3+1]; 
+      char res[sizeof(value)*3+1]; 
       cp1251_to_utf8((char*) &res, value);
       value_ = std::string(res);
       has_value_ = true;
