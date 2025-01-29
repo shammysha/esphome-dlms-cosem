@@ -117,7 +117,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
       ESP_LOGV("SENS", "DATA: %s, SIZE OF DATA: %d", value, size); 
       char res[size*3+1]; 
      
-      cp1251_to_utf8(res, (char*) &(value));
+      cp1251_to_utf8(res, value);
       value_ = std::string(res);
       has_value_ = true;
       tries_ = 0;
