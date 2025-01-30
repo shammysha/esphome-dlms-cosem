@@ -61,6 +61,8 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void register_sensor(DlmsCosemSensorBase *sensor);
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
 
+  void set_connection_sensor(binary_sensor::BinarySensor *sensor) { this->connection_sensor_ = sensor; }
+  
   uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
   bool has_error{false};
 
@@ -75,10 +77,11 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   GPIOPin *flow_control_pin_{nullptr};
   std::unique_ptr<DlmsCosemUart> iuart_;
-
+  
   SensorMap sensors_;
 
   sensor::Sensor *crc_errors_per_session_sensor_{};
+  binary_sensor::BinarySensor *connection_sensor_{nullptr};
 
   enum class State : uint8_t {
     NOT_INITIALIZED,
