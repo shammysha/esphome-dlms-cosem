@@ -102,9 +102,7 @@ CONFIG_SCHEMA = cv.All(
     cv.has_none_or_all_keys(
         [CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH]
     ),
-    cv.has_exactly_one_key(
-        [CONF_LOGICAL_DEVICE, CONF_SERVER_ADDRESS]
-    )
+    cv.has_exactly_one_key(CONF_LOGICAL_DEVICE, CONF_SERVER_ADDRESS)
 )
 
 async def to_code(config):
