@@ -64,7 +64,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_connection_sensor(binary_sensor::BinarySensor *sensor) { this->connection_sensor_ = sensor; }
   
   uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
-  bool has_error{false};
+  bool has_error{true};
 
  protected:
   uint16_t client_address_{16};
