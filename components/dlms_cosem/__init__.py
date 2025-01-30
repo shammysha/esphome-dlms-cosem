@@ -98,15 +98,14 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
-    .extend(uart.UART_DEVICE_SCHEMA)
-),
-cv.has_none_or_all_keys(
-    [CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH]
-),
-cv.has_exactly_one_key(
-    [CONF_LOGICAL_DEVICE, CONF_SERVER_ADDRESS]
+    .extend(uart.UART_DEVICE_SCHEMA),
+    cv.has_none_or_all_keys(
+        [CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH]
+    ),
+    cv.has_exactly_one_key(
+        [CONF_LOGICAL_DEVICE, CONF_SERVER_ADDRESS]
+    )
 )
-
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
