@@ -70,10 +70,10 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(DlmsCosem),
             cv.Optional(CONF_CLIENT_ADDRESS, default=16): cv.positive_int,
-            cv.Optional(CONF_SERVER_ADDRESS, default=1): cv.positive_int,
-            cv.Optional(CONF_LOGICAL_DEVICE, default=1): cv.positive_int,
-            cv.Optional(CONF_PHYSICAL_DEVICE, default=1): cv.positive_int,
-            cv.Optional(CONF_ADDRESS_LENGTH, default=1): cv.one_of(*ADDRESS_LENGTH_ENUM),
+            cv.Optional(CONF_SERVER_ADDRESS): cv.positive_int,
+            cv.Optional(CONF_LOGICAL_DEVICE): cv.positive_int,
+            cv.Optional(CONF_PHYSICAL_DEVICE): cv.positive_int,
+            cv.Optional(CONF_ADDRESS_LENGTH): cv.one_of(1, 2, 4),
             cv.Optional(CONF_AUTH, default=False): cv.boolean,
             cv.Optional(CONF_PASSWORD, default=""): cv.string,
             cv.Optional(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
@@ -98,7 +98,9 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
-    .extend(uart.UART_DEVICE_SCHEMA)
+    .extend(uart.UART_DEVICE_SCHEMA),
+    cv.has_none_or_all_keys(CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH),
+    cv.has_exactly_one_key(CONF_SERVER_ADDRESS, CONF_PHYSICAL_DEVICE)
 )
 
 async def to_code(config):
@@ -116,13 +118,9 @@ async def to_code(config):
         cg.add(var.set_indicator(sens))
 
     if config.get(CONF_SERVER_ADDRESS):
-        if config.get(CONF_LOGICAL_DEVICE) or config.get(CONF_PHYSICAL_DEVICE) or config.get(CONF_ADDRESS_LENGTH):
-            raise cv.Invalid(f"Config must have only one of: {CONF_SERVER_ADDRESS} or ({CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
         cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))    
 
-    if config.get(CONF_LOGICAL_DEVICE) or config.get(CONF_PHYSICAL_DEVICE) or config.get(CONF_ADDRESS_LENGTH):
-        if not all(k in config for k in (CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH)):
-            raise cv.Invalid(f"Config must have none or all of: {CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
+    if config.get(CONF_LOGICAL_DEVICE):
         cg.add(var.update_server_address(config[CONF_LOGICAL_DEVICE], config[CONF_PHYSICAL_DEVICE], config[CONF_ADDRESS_LENGTH]))    
         
     cg.add(var.set_client_address(config[CONF_CLIENT_ADDRESS]))
