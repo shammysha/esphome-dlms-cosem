@@ -117,12 +117,12 @@ async def to_code(config):
 
     if config.get(CONF_SERVER_ADDRESS):
         if config.get(CONF_LOGICAL_DEVICE) or config.get(CONF_PHYSICAL_DEVICE) or config.get(CONF_ADDRESS_LENGTH):
-            raise Invalid(f"Config must have only one of: {CONF_SERVER_ADDRESS} or ({CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
+            raise cv.Invalid(f"Config must have only one of: {CONF_SERVER_ADDRESS} or ({CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
         cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))    
 
     if config.get(CONF_LOGICAL_DEVICE) or config.get(CONF_PHYSICAL_DEVICE) or config.get(CONF_ADDRESS_LENGTH):
         if not all(k in config for k in (CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH)):
-            raise Invalid(f"Config must have none or all of: {CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
+            raise cv.Invalid(f"Config must have none or all of: {CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
         cg.add(var.update_server_address(config[CONF_LOGICAL_DEVICE], config[CONF_PHYSICAL_DEVICE], config[CONF_ADDRESS_LENGTH]))    
         
     cg.add(var.set_client_address(config[CONF_CLIENT_ADDRESS]))
