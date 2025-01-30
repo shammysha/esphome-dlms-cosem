@@ -140,7 +140,7 @@ async def to_code(config):
         var.set_connection_sensor(await binary_sensor.new_binary_sensor(
             {
                 cv.GenerateID(): cv.use_id(DlmsCosem),
-                CONF_NAME: (config.get(CONF_NAME) or config.get(CONF_ID)).replace("_", "-") + "-connection",
+                CONF_NAME: (config.get(CONF_NAME) or str(config.get(CONF_ID))).replace("_", "-") + "-connection",
                 CONF_DEVICE_CLASS: DEVICE_CLASS_CONNECTIVITY,
                 CONF_ENTITY_CATEGORY: ENTITY_CATEGORY_DIAGNOSTIC,
                 CONF_DISABLED_BY_DEFAULT: False
