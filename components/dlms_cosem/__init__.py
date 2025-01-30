@@ -10,7 +10,10 @@ from esphome.const import (
     CONF_RECEIVE_TIMEOUT,
     CONF_UPDATE_INTERVAL,
     CONF_FLOW_CONTROL_PIN,
-    CONF_PASSWORD
+    CONF_PASSWORD,
+    CONF_DEVICE_CLASS,
+    CONF_ENTITY_CATEGORY,
+    CONF_DISABLED_BY_DEFAULT
 )
 
 CODEOWNERS = ["@latonita"]
@@ -132,5 +135,17 @@ async def to_code(config):
     cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
     cg.add(var.set_reboot_after_failure(config[CONF_REBOOT_AFTER_FAILURE]))
 
+    cg.add(
+        var.set_connection_sensor(await binary_sensor.new_binary_sensor(
+            {
+                cv.GenerateID(): cv.use_id(DlmsCosem),
+                CONF_NAME: (config.get(CONF_NAME) or config.get(CONF_ID)).replace("_", "-") + "-connection",
+                CONF_DEVICE_CLASS: DEVICE_CLASS_CONNECTIVITY,
+                CONF_ENTITY_CATEGORY: ENTITY_CATEGORY_DIAGNOSTIC,
+                CONF_DISABLED_BY_DEFAULT: False
+            }            
+        ))
+    )
+    
 #    cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c.platformio")
     cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
