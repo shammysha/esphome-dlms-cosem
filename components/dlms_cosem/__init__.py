@@ -48,7 +48,7 @@ DlmsCosem = dlms_cosem_ns.class_(
 )
 
 BAUD_RATES = [300, 600, 1200, 2400, 4800, 9600, 19200]
-
+ADDRESS_LENGTH_ENUM = [1, 2, 4]
 
 def obis_code(value):
     value = cv.string(value)
@@ -73,7 +73,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_SERVER_ADDRESS, default=1): cv.positive_int,
             cv.Optional(CONF_LOGICAL_DEVICE, default=1): cv.positive_int,
             cv.Optional(CONF_PHYSICAL_DEVICE, default=1): cv.positive_int,
-            cv.Optional(CONF_ADDRESS_LENGTH, default=1): cv.one_of([1, 2, 4]),
+            cv.Optional(CONF_ADDRESS_LENGTH, default=1): cv.one_of(*ADDRESS_LENGTH_ENUM),
             cv.Optional(CONF_AUTH, default=False): cv.boolean,
             cv.Optional(CONF_PASSWORD, default=""): cv.string,
             cv.Optional(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
