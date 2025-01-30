@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/sensor/sensor.h"
 #ifdef USE_TEXT_SENSOR
 #include "esphome/components/text_sensor/text_sensor.h"
@@ -10,7 +11,8 @@ namespace dlms_cosem {
 
 static constexpr uint8_t MAX_TRIES = 10;
 
-enum SensorType { SENSOR, TEXT_SENSOR };
+CONNECTION_SENSOR = "connection_sensor"
+enum SensorType { SENSOR, TEXT_SENSOR, CONNECTION_SENSOR };
 
 // const char * UNIT_STR_UNKNOWN = "Unknown unit";
 #define UNIT_STR_UNKNOWN_NOT_YET "Unknown unit / not yet known"
@@ -161,5 +163,8 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
 };
 #endif
 
+class DlmsCosemConnectionSensor : public binary_sensor::BinarySensor {
+  public:
+    SensorType get_type() { return CONNECTION_SENSOR; }
 }  // namespace dlms_cosem
 }  // namespace esphome
