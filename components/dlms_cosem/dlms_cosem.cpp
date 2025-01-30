@@ -256,9 +256,7 @@ void DlmsCosemComponent::loop() {
         }
         return;
       }
-      this->connection_sensor_->publish_state(1);
-      this->has_error = false;
-      
+     
       // the folowing basic algorithm to be implemented to read DLMS packet
       // first version, no retries
       // 1. receive proper hdlc frame
@@ -503,6 +501,8 @@ void DlmsCosemComponent::update() {
     return;
   }
   ESP_LOGD(TAG, "Starting data collection");
+  this->connection_sensor_->publish_state(1);
+  this->has_error = false;
   this->set_next_state_(State::OPEN_SESSION);
 }
 
