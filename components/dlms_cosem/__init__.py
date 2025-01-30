@@ -141,6 +141,7 @@ async def to_code(config):
     cg.add(
         var.set_connection_sensor(await binary_sensor.new_binary_sensor(
             {
+                CONF_ID: str(config.get(CONF_ID)) + "_connection",
                 CONF_NAME: (config.get(CONF_NAME) or str(config.get(CONF_ID))).replace("_", "-") + "-connection",
                 CONF_DEVICE_CLASS: DEVICE_CLASS_CONNECTIVITY,
                 CONF_ENTITY_CATEGORY: ENTITY_CATEGORY_DIAGNOSTIC,
