@@ -5,6 +5,7 @@ import esphome.config_validation as cv
 from esphome.components import uart, binary_sensor
 from esphome.const import (
     CONF_ID,
+    CONF_NAME,
     CONF_AUTH,
     CONF_BAUD_RATE,
     CONF_RECEIVE_TIMEOUT,
