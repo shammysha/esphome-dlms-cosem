@@ -139,15 +139,14 @@ async def to_code(config):
     cg.add(var.set_reboot_after_failure(config[CONF_REBOOT_AFTER_FAILURE]))
 
     cg.add(
-        var.set_connection_sensor(await binary_sensor.new_binary_sensor(
-            {
-                CONF_ID: str(config.get(CONF_ID)) + "_connection",
+        var.set_connection_sensor(
+            await binary_sensor.new_binary_sensor({
                 CONF_NAME: (config.get(CONF_NAME) or str(config.get(CONF_ID))).replace("_", "-") + "-connection",
                 CONF_DEVICE_CLASS: DEVICE_CLASS_CONNECTIVITY,
                 CONF_ENTITY_CATEGORY: ENTITY_CATEGORY_DIAGNOSTIC,
                 CONF_DISABLED_BY_DEFAULT: False
-            }            
-        ))
+            })
+        )
     )
     
 #    cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c.platformio")
