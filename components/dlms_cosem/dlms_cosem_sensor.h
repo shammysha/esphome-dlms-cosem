@@ -11,8 +11,7 @@ namespace dlms_cosem {
 
 static constexpr uint8_t MAX_TRIES = 10;
 
-CONNECTION_SENSOR = "connection_sensor"
-enum SensorType { SENSOR, TEXT_SENSOR, CONNECTION_SENSOR };
+enum SensorType { SENSOR, TEXT_SENSOR };
 
 // const char * UNIT_STR_UNKNOWN = "Unknown unit";
 #define UNIT_STR_UNKNOWN_NOT_YET "Unknown unit / not yet known"
