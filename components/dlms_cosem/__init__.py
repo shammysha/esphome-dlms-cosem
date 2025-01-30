@@ -10,7 +10,7 @@ from esphome.const import (
     CONF_RECEIVE_TIMEOUT,
     CONF_UPDATE_INTERVAL,
     CONF_FLOW_CONTROL_PIN,
-    CONF_PASSWORD,
+    CONF_PASSWORD
 )
 
 CODEOWNERS = ["@latonita"]
@@ -30,6 +30,9 @@ CONF_DLMS_COSEM_ID = "dlms_cosem_id"
 CONF_OBIS_CODE = "obis_code"
 CONF_CLIENT_ADDRESS = "client_address"
 CONF_SERVER_ADDRESS = "server_address"
+CONF_LOGICAL_DEVICE = "logical_device"
+CONF_PHYSICAL_DEVICE = "physical_device"
+CONF_ADDRESS_LENGTH = "address_length"
 CONF_DELAY_BETWEEN_REQUESTS = "delay_between_requests"
 CONF_DONT_PUBLISH = "dont_publish"
 CONF_CLASS = "class"
@@ -68,6 +71,9 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(): cv.declare_id(DlmsCosem),
             cv.Optional(CONF_CLIENT_ADDRESS, default=16): cv.positive_int,
             cv.Optional(CONF_SERVER_ADDRESS, default=1): cv.positive_int,
+            cv.Optional(CONF_LOGICAL_DEVICE, default=1): cv.positive_int,
+            cv.Optional(CONF_PHYSICAL_DEVICE, default=1): cv.positive_int,
+            cv.Optional(CONF_ADDRESS_LENGTH, default=1): cv.one_of([1, 2, 4]),
             cv.Optional(CONF_AUTH, default=False): cv.boolean,
             cv.Optional(CONF_PASSWORD, default=""): cv.string,
             cv.Optional(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
@@ -93,6 +99,12 @@ CONFIG_SCHEMA = cv.All(
     )
     .extend(cv.COMPONENT_SCHEMA)
     .extend(uart.UART_DEVICE_SCHEMA)
+),
+cv.has_none_or_all_keys(
+    [CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH]
+),
+cv.has_exactly_one_key(
+    [CONF_LOGICAL_DEVICE, CONF_SERVER_ADDRESS]
 )
 
 
@@ -101,6 +113,7 @@ async def to_code(config):
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
 
+    if 
     if flow_control_pin := config.get(CONF_FLOW_CONTROL_PIN):
         pin = await cg.gpio_pin_expression(flow_control_pin)
         cg.add(var.set_flow_control_pin(pin))
@@ -110,8 +123,13 @@ async def to_code(config):
         await binary_sensor.register_binary_sensor(sens, indicator_config)
         cg.add(var.set_indicator(sens))
 
+    if address := config.get(CONF_SERVER_ADDRESS):
+        cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))    
+    
+    if device := config.get(CONF_LOGICAL_DEVICE):
+        cg.add(var.update_server_address(config[CONF_LOGICAL_DEVICE], config[CONF_PHYSICAL_DEVICE], config[CONF_ADDRESS_LENGTH]))    
+        
     cg.add(var.set_client_address(config[CONF_CLIENT_ADDRESS]))
-    cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))
     cg.add(var.set_auth_required(config[CONF_AUTH]))
     cg.add(var.set_password(config[CONF_PASSWORD]))
     cg.add(var.set_baud_rates(config[CONF_BAUD_RATE_HANDSHAKE], config[CONF_BAUD_RATE]))
