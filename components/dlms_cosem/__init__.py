@@ -98,9 +98,7 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
-    .extend(uart.UART_DEVICE_SCHEMA),
-    cv.has_none_or_all_keys(CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH),
-
+    .extend(uart.UART_DEVICE_SCHEMA)
 )
 
 async def to_code(config):
@@ -117,10 +115,14 @@ async def to_code(config):
         await binary_sensor.register_binary_sensor(sens, indicator_config)
         cg.add(var.set_indicator(sens))
 
-    if address := config.get(CONF_SERVER_ADDRESS):
+    if config.get(CONF_SERVER_ADDRESS):
+        if config.get(CONF_LOGICAL_DEVICE) or config.get(CONF_PHYSICAL_DEVICE) or config.get(CONF_ADDRESS_LENGTH):
+            raise Invalid(f"Config must have only one of: {CONF_SERVER_ADDRESS} or ({CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
         cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))    
-    
-    if device := config.get(CONF_LOGICAL_DEVICE):
+
+    if config.get(CONF_LOGICAL_DEVICE) or config.get(CONF_PHYSICAL_DEVICE) or config.get(CONF_ADDRESS_LENGTH):
+        if not all(k in config for k in (CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH):
+            raise Invalid(f"Config must have none or all of: {CONF_LOGICAL_DEVICE}, {CONF_PHYSICAL_DEVICE}, {CONF_ADDRESS_LENGTH}")
         cg.add(var.update_server_address(config[CONF_LOGICAL_DEVICE], config[CONF_PHYSICAL_DEVICE], config[CONF_ADDRESS_LENGTH]))    
         
     cg.add(var.set_client_address(config[CONF_CLIENT_ADDRESS]))
