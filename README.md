@@ -17,10 +17,16 @@
 # Выбор адреса сервера и клиента
 Необходимо в каждом случае смотреть инструкцию к счетчику. Клиентский адрес выбирается, как правило, 32, а серверный - 1.
 ## client_address
-| Код | Уровень доступа            | Описание                         |
-|-----|----------------------------|----------------------------------|
-| 16  | Публичный клиент           | Доступ без пароля                |
-| 32  | Считыватель показаний      | Обычно требуется пароль (`auth: true`) |
+| Код | Уровень доступа            |
+|-----|----------------------------|
+| 16  | Публичный клиент           |
+| 32  | Считыватель показаний      | 
+
+Часто для уровня 32 требуется указать пароль:
+```
+auth: true
+password: 12345678
+```
 
 ## server_address
 Как правило это 1 (логический адрес из инструкции к счетчику).
@@ -28,7 +34,9 @@
 ```
    server_address = 16384 * лог.адрес + физический адрес
 ```
-### Пример для Милур 107S 
+
+<details><summary>Расчет для Милур 107S</summary>
+
 В инструкции указано:
 | Параметр           | Значение |
 |--------------------|------------------------------------------------|
@@ -44,9 +52,10 @@ client_address: 32
 auth: true
 password: "789456"
 ```
+</details>
 
 
-# Примеры 
+# Примеры конфигураций
 
 ## Однофазный счетчик (ПУ категории D) 
 Используется список параметров ПУ категории D из стандарта СПОДЭС. Они применяются в однофазных ПУ потребителей.
@@ -87,83 +96,74 @@ dlms_cosem:
   password: "12345678"
   update_interval: 60s
   receive_timeout: 1s
-
 sensor:
 # 2 Current - Iph Ток фазы 1.0.11.7.0.255
   - platform: dlms_cosem
-    name: Ток фазы
+    name: Phase Current
     obis_code: 1.0.11.7.0.255
     unit_of_measurement: A
     accuracy_decimals: 1
     device_class: current
     state_class: measurement
-
 # 3 Current - In Ток нулевого провода 1.0.91.7.0.255
   - platform: dlms_cosem
-    name: Ток нулевого провода
+    name: Neutral Current
     obis_code: 1.0.91.7.0.255
     unit_of_measurement: A
     accuracy_decimals: 1
     device_class: current
     state_class: measurement
-
 # 4 Voltage - V Напряжение фазы 1.0.12.7.0.255
   - platform: dlms_cosem
-    name: Напряжение фазы
+    name: Phase Voltage
     obis_code: 1.0.12.7.0.255
     unit_of_measurement: V
     accuracy_decimals: 1
     device_class: voltage
     state_class: measurement
-
 # 5 Power Factor - PF Коэффициент мощности 1.0.13.7.0.255
   - platform: dlms_cosem
-    name: Коэффициент мощности
+    name: Power Factor
     obis_code: 1.0.13.7.0.255
     unit_of_measurement: ''
     accuracy_decimals: 2
     device_class: power_factor
     state_class: measurement
-
 # 6 Frequency Частота сети 1.0.14.7.0.255
   - platform: dlms_cosem
-    name: Частота сети
+    name: Grid Frequency
     obis_code: 1.0.14.7.0.255
     unit_of_measurement: Hz
     accuracy_decimals: 1
     device_class: frequency
     state_class: measurement
-
 # 7 Apparent Power Полная мощность 1.0.9.7.0.255
   - platform: dlms_cosem
-    name: Полная мощность
+    name: Apparent Power
     obis_code: 1.0.9.7.0.255
     unit_of_measurement: W
     accuracy_decimals: 1
     device_class: power
     state_class: measurement
-
 # 8 Signed Active Power (+Import; -Export) Активная мощность 1.0.1.7.0.255
   - platform: dlms_cosem
-    name: Активная мощность
+    name: Active Power
     obis_code: 1.0.1.7.0.255
     unit_of_measurement: W
     accuracy_decimals: 1
     device_class: power
     state_class: measurement
-
 # 9 Signed Reactive Power (+Import; -Export) Реактивная мощность 1.0.3.7.0.255
   - platform: dlms_cosem
-    name: Реактивная мощность
+    name: Reactive Power
     obis_code: 1.0.3.7.0.255
     unit_of_measurement: W
     accuracy_decimals: 1
     device_class: power
     state_class: measurement
-
 # 10 Cumulative Active Energy (Import) Активная энергия, импорт 1.0.1.8.0.255
   - platform: dlms_cosem
-    name: Электроэнергия
+    name: Active Energy
     obis_code: 1.0.1.8.0.255
     unit_of_measurement: kWh
     accuracy_decimals: 3
@@ -171,10 +171,9 @@ sensor:
     state_class: total_increasing
     filters:
       - multiply: 0.001
-
 # 10.1 Cumulative Active Energy (Import) tariff 1
   - platform: dlms_cosem
-    name: Электроэнергия Т1
+    name: Active Energy T1
     obis_code: 1.0.1.8.1.255
     unit_of_measurement: kWh
     accuracy_decimals: 3
@@ -182,10 +181,9 @@ sensor:
     state_class: total_increasing
     filters:
       - multiply: 0.001
-
 # 10.2 Cumulative Active Energy (Import) tariff 2
   - platform: dlms_cosem
-    name: Электроэнергия Т2
+    name: Active Energy T2
     obis_code: 1.0.1.8.2.255
     unit_of_measurement: kWh
     accuracy_decimals: 3
@@ -193,10 +191,9 @@ sensor:
     state_class: total_increasing
     filters:
       - multiply: 0.001
-
 # 11 Cumulative Active Energy (Export) Активная энергия, экспорт 1.0.2.8.0.255
   - platform: dlms_cosem
-    name: Электроэнергия, экспорт
+    name: Active Energy Export
     obis_code: 1.0.2.8.0.255
     unit_of_measurement: kWh
     accuracy_decimals: 3
@@ -204,10 +201,9 @@ sensor:
     state_class: total_increasing
     filters:
       - multiply: 0.001
-
 # 12 Cumulative Reactive Energy (Import) Реактивная энергия, импорт 1.0.3.8.0.255
   - platform: dlms_cosem
-    name: Реактивная энергия
+    name: Reactive Energy
     obis_code: 1.0.3.8.0.255
     unit_of_measurement: kWh
     accuracy_decimals: 3
@@ -215,10 +211,9 @@ sensor:
     state_class: total_increasing
     filters:
       - multiply: 0.001
-
 # 13 Cumulative Reactive Energy (Export) Реактивная энергия, экспорт 1.0.4.8.0.255
   - platform: dlms_cosem
-    name: Реактивная энергия, экспорт
+    name: Reactive Energy Export
     obis_code: 1.0.4.8.0.255
     unit_of_measurement: kWh
     accuracy_decimals: 3
@@ -226,22 +221,21 @@ sensor:
     state_class: total_increasing
     filters:
       - multiply: 0.001
-
 text_sensor:
   - platform: dlms_cosem
-    name: Заводской номер
+    name: Serial Number
     obis_code: 0.0.96.1.0.255
     entity_category: diagnostic
   - platform: dlms_cosem
-    name: Тип
+    name: Type
     obis_code: 0.0.96.1.1.255
     entity_category: diagnostic
   - platform: dlms_cosem
-    name: Версия метрологического ПО
+    name: Metrology Software Version
     obis_code: 0.0.96.1.2.255
     entity_category: diagnostic
   - platform: dlms_cosem
-    name: Производитель
+    name: Manufacturer
     obis_code: 0.0.96.1.3.255
     entity_category: diagnostic
 
