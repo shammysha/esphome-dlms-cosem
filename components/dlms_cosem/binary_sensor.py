@@ -1,3 +1,4 @@
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import binary_sensor
@@ -16,7 +17,7 @@ AUTO_LOAD = ["dlms_cosem"]
 
 TYPE_ENUM = ["CONNECTION"]
 
-DlmsCosemBinarySensor = dlms_cosem_ns.class_(binary_sensor.BinarySensor)
+DlmsCosemBinarySensor = dlms_cosem_ns.class_("DlmsCosemBinarySensor", binary_sensor.BinarySensor)
 
 CONFIG_SCHEMA = cv.All(
     binary_sensor.binary_sensor_schema(
