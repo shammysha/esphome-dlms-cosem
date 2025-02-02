@@ -128,7 +128,7 @@ uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint
             this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
             this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);  
 
-  this->set_next_state_delayed_(2000, State::OPEN_SESSION);
+  this->update();
 
   return value;
 }
