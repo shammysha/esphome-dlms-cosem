@@ -9,6 +9,10 @@
 namespace esphome {
 namespace dlms_cosem {
 
+static const char *TAG0 = "dlms_cosem_";
+
+#define TAG (this->tag_.c_str())
+
 static constexpr uint8_t SOH = 0x01;
 static constexpr uint8_t STX = 0x02;
 static constexpr uint8_t ETX = 0x03;
@@ -114,7 +118,7 @@ void DlmsCosemComponent::setup() {
   cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
           this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
           this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
-  BYTE_BUFFER_INIT(&this->buffers_.in);
+  this->buffers_.init();
 
 #ifdef USE_ESP32_FRAMEWORK_ARDUINO
   iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP32ArduinoUARTComponent *>(this->parent_));
@@ -162,8 +166,9 @@ void DlmsCosemComponent::register_sensor(DlmsCosemSensorBase *sensor) {
 
 void DlmsCosemComponent::abort_mission_() {
   // try close connection ?
-  ESP_LOGE(TAG, "Closing session");
+  ESP_LOGE(TAG, "Abort mission. Closing session");
   //  this->send_frame_(CMD_CLOSE_SESSION, sizeof(CMD_CLOSE_SESSION));
+  this->unlock_uart_session_();
   this->set_next_state_(State::IDLE);
   this->report_failure(true);
 }
@@ -187,13 +192,23 @@ void DlmsCosemComponent::loop() {
     return;
 
   // in-loop static variables
-  static uint32_t session_started_ms{0};            // start of session
-  static auto request_iter = this->sensors_.end();  // talking to meter
-  static auto sensor_iter = this->sensors_.end();   // publishing sensor values
+  // static uint32_t session_started_ms{0};            // start of session
+  // static auto request_iter = this->sensors_.end();  // talking to meter
+  // static auto sensor_iter = this->sensors_.end();   // publishing sensor values
 
   switch (this->state_) {
     case State::IDLE: {
       this->update_last_rx_time_();
+    } break;
+
+    case State::TRY_LOCK_BUS: {
+      this->log_state_();
+      if (this->try_lock_uart_session_()) {
+        this->set_next_state_(State::OPEN_SESSION);
+      } else {
+        ESP_LOGV(TAG, "UART Bus is busy, waiting ...");
+        this->set_next_state_delayed_(1000, State::TRY_LOCK_BUS);
+      }
     } break;
 
     case State::WAIT:
@@ -221,6 +236,7 @@ void DlmsCosemComponent::loop() {
         this->stats_.invalid_frames_ += reading_state_.err_invalid_frames;
         // if mission critical
         if (reading_state_.mission_critical) {
+          ESP_LOGE(TAG, "Mission critical RX timeout.");
           this->abort_mission_();
         } else {
           // if not move forward
@@ -290,11 +306,11 @@ void DlmsCosemComponent::loop() {
 
     case State::OPEN_SESSION: {
       this->stats_.connections_tried_++;
-      session_started_ms = millis();
+      this->loop_state_.session_started_ms = millis();
       this->log_state_();
 
       this->clear_rx_buffers_();
-      request_iter = this->sensors_.begin();
+      this->loop_state_.request_iter = this->sensors_.begin();
 
       this->set_next_state_(State::BUFFERS_REQ);
 
@@ -359,13 +375,13 @@ void DlmsCosemComponent::loop() {
 
     case State::DATA_ENQ_UNIT: {
       this->log_state_();
-      if (request_iter == this->sensors_.end()) {
+      if (this->loop_state_.request_iter == this->sensors_.end()) {
         ESP_LOGD(TAG, "All requests done");
         this->set_next_state_(State::SESSION_RELEASE);
         break;
       } else {
-        auto req = request_iter->first;
-        auto sens = request_iter->second;
+        auto req = this->loop_state_.request_iter->first;
+        auto sens = this->loop_state_.request_iter->second;
         auto type = sens->get_obis_class();
 
         ESP_LOGD(TAG, "OBIS code: %s, Sensor: %s", req.c_str(), sens->get_sensor_name().c_str());
@@ -386,13 +402,13 @@ void DlmsCosemComponent::loop() {
 
     case State::DATA_ENQ: {
       this->log_state_();
-      if (request_iter == this->sensors_.end()) {
+      if (this->loop_state_.request_iter == this->sensors_.end()) {
         ESP_LOGD(TAG, "All requests done");
         this->set_next_state_(State::SESSION_RELEASE);
         break;
       } else {
-        auto req = request_iter->first;
-        auto sens = request_iter->second;
+        auto req = this->loop_state_.request_iter->first;
+        auto sens = this->loop_state_.request_iter->second;
         auto type = sens->get_obis_class();
         auto units_were_requested = (sens->get_type() == SensorType::SENSOR && type == DLMS_OBJECT_TYPE_REGISTER &&
                                      !sens->has_got_scale_and_unit());
@@ -409,16 +425,16 @@ void DlmsCosemComponent::loop() {
       this->log_state_();
       this->set_next_state_(State::DATA_NEXT);
 
-      auto req = request_iter->first;
-      auto sens = request_iter->second;
+      auto req = this->loop_state_.request_iter->first;
+      auto sens = this->loop_state_.request_iter->second;
       auto ret = this->set_sensor_value(sens, req.c_str());
 
     } break;
 
     case State::DATA_NEXT:
       this->log_state_();
-      request_iter = this->sensors_.upper_bound(request_iter->first);
-      if (request_iter != this->sensors_.end()) {
+      this->loop_state_.request_iter = this->sensors_.upper_bound(this->loop_state_.request_iter->first);
+      if (this->loop_state_.request_iter != this->sensors_.end()) {
         this->set_next_state_delayed_(this->delay_between_requests_ms_, State::DATA_ENQ_UNIT);
       } else {
         this->set_next_state_delayed_(this->delay_between_requests_ms_, State::SESSION_RELEASE);
@@ -426,7 +442,7 @@ void DlmsCosemComponent::loop() {
       break;
 
     case State::SESSION_RELEASE:
-      sensor_iter = this->sensors_.begin();
+      this->loop_state_.sensor_iter = this->sensors_.begin();
 
       this->log_state_();
       ESP_LOGD(TAG, "Session release request");
@@ -448,19 +464,20 @@ void DlmsCosemComponent::loop() {
       ESP_LOGD(TAG, "Publishing data");
       this->update_last_rx_time_();
 
-      if (sensor_iter != this->sensors_.end()) {
-        if (sensor_iter->second->shall_we_publish()) {
-          sensor_iter->second->publish();
+      if (this->loop_state_.sensor_iter != this->sensors_.end()) {
+        if (this->loop_state_.sensor_iter->second->shall_we_publish()) {
+          this->loop_state_.sensor_iter->second->publish();
         }
-        sensor_iter++;
+        this->loop_state_.sensor_iter++;
       } else {
-        this->stats_.dump();
+        this->stats_dump();
         if (this->crc_errors_per_session_sensor_ != nullptr) {
           this->crc_errors_per_session_sensor_->publish_state(this->stats_.crc_errors_per_session());
         }
         this->report_failure(false);
+        this->unlock_uart_session_(); 
         this->set_next_state_(State::IDLE);
-        ESP_LOGD(TAG, "Total time: %u ms", millis() - session_started_ms);
+        ESP_LOGD(TAG, "Total time: %u ms", millis() - this->loop_state_.session_started_ms);
       }
       break;
 
@@ -475,7 +492,7 @@ void DlmsCosemComponent::update() {
     return;
   }
   ESP_LOGD(TAG, "Starting data collection");
-  this->set_next_state_(State::OPEN_SESSION);
+  this->set_next_state_(State::TRY_LOCK_BUS);
 }
 
 bool char2float(const char *str, float &value) {
@@ -518,13 +535,16 @@ void DlmsCosemComponent::InOutBuffers::reset() {
 void DlmsCosemComponent::InOutBuffers::check_and_grow_input(uint16_t more_data) {
   const uint16_t GROW_EPSILON = 20;
   if (in.size + more_data > in.capacity) {
-    ESP_LOGVV(TAG, "Growing input buffer from %d to %d", in.capacity, in.size + more_data + GROW_EPSILON);
+    ESP_LOGVV(TAG0, "Growing input buffer from %d to %d", in.capacity, in.size + more_data + GROW_EPSILON);
     bb_capacity(&in, in.size + more_data + GROW_EPSILON);
   }
 }
 
 void DlmsCosemComponent::prepare_and_send_dlms_buffers() {
-  auto make = [this]() { return cl_snrmRequest(&this->dlms_settings_, &this->buffers_.out_msg); };
+  auto make = [this]() {
+    ESP_LOGD(TAG0, "cl_snrmRequest %p ", this->buffers_.out_msg.data);
+    return cl_snrmRequest(&this->dlms_settings_, &this->buffers_.out_msg);
+  };
   auto parse = [this]() { return cl_parseUAResponse(&this->dlms_settings_, &this->buffers_.reply.data); };
   this->send_dlms_req_and_next(make, parse, State::BUFFERS_RCV);
 }
@@ -819,6 +839,8 @@ const char *DlmsCosemComponent::state_to_string(State state) {
       return "NOT_INITIALIZED";
     case State::IDLE:
       return "IDLE";
+    case State::TRY_LOCK_BUS:
+      return "TRY_LOCK_BUS";
     case State::WAIT:
       return "WAIT";
     case State::COMMS_TX:
@@ -855,28 +877,26 @@ const char *DlmsCosemComponent::state_to_string(State state) {
 }
 
 void DlmsCosemComponent::log_state_(State *next_state) {
-  static State last_reported_state{State::NOT_INITIALIZED};
-  State current_state = this->state_;
-  if (current_state != last_reported_state) {
+  if (this->state_ != this->last_reported_state_) {
     if (next_state == nullptr) {
-      ESP_LOGV(TAG, "State::%s", state_to_string(current_state));
+      ESP_LOGV(TAG, "State::%s", state_to_string(this->state_));
     } else {
-      ESP_LOGV(TAG, "State::%s -> %s", state_to_string(current_state), state_to_string(*next_state));
+      ESP_LOGV(TAG, "State::%s -> %s", state_to_string(this->state_), state_to_string(*next_state));
     }
-    last_reported_state = current_state;
+    this->last_reported_state_ = this->state_;
   }
 }
 
-void DlmsCosemComponent::Stats::dump() {
-  ESP_LOGD(TAG, "============================================");
-  ESP_LOGD(TAG, "Data collection and publishing finished.");
-  ESP_LOGD(TAG, "Total number of sessions ............. %u", this->connections_tried_);
-  ESP_LOGD(TAG, "Total number of invalid frames ....... %u", this->invalid_frames_);
-  ESP_LOGD(TAG, "Total number of CRC errors ........... %u", this->crc_errors_);
-  ESP_LOGD(TAG, "Total number of CRC errors recovered . %u", this->crc_errors_recovered_);
-  ESP_LOGD(TAG, "CRC errors per session ............... %f", this->crc_errors_per_session());
-  ESP_LOGD(TAG, "Number of failures ................... %u", this->failures_);
-  ESP_LOGD(TAG, "============================================");
+void DlmsCosemComponent::stats_dump() {
+  ESP_LOGV(TAG, "============================================");
+  ESP_LOGV(TAG, "Data collection and publishing finished.");
+  ESP_LOGV(TAG, "Total number of sessions ............. %u", this->stats_.connections_tried_);
+  ESP_LOGV(TAG, "Total number of invalid frames ....... %u", this->stats_.invalid_frames_);
+  ESP_LOGV(TAG, "Total number of CRC errors ........... %u", this->stats_.crc_errors_);
+  ESP_LOGV(TAG, "Total number of CRC errors recovered . %u", this->stats_.crc_errors_recovered_);
+  ESP_LOGV(TAG, "CRC errors per session ............... %f", this->stats_.crc_errors_per_session());
+  ESP_LOGV(TAG, "Number of failures ................... %u", this->stats_.failures_);
+  ESP_LOGV(TAG, "============================================");
 }
 
 const char *DlmsCosemComponent::dlms_error_to_string(int error) {
@@ -954,5 +974,24 @@ const char *DlmsCosemComponent::dlms_data_type_to_string(DLMS_DATA_TYPE vt) {
       return "DMS_DATA_TYPE UNKNOWN";
   }
 }
+
+bool DlmsCosemComponent::try_lock_uart_session_() {
+  if (AnyObjectLocker::try_lock(this->parent_)) {
+    ESP_LOGV(TAG, "UART bus %p locked by %s", this->parent_, this->tag_.c_str());
+    return true;
+  }
+  ESP_LOGV(TAG, "UART bus %p busy", this->parent_);
+  return false;
+}
+
+void DlmsCosemComponent::unlock_uart_session_() {
+  AnyObjectLocker::unlock(this->parent_);
+  ESP_LOGV(TAG, "UART bus %p released by %s", this->parent_, this->tag_.c_str());
+}
+
+uint8_t DlmsCosemComponent::next_obj_id_ = 0;
+
+std::string DlmsCosemComponent::generateTag() { return str_sprintf("%s%03d", TAG0, ++next_obj_id_); }
+
 }  // namespace dlms_cosem
 }  // namespace esphome

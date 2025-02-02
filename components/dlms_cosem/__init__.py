@@ -15,6 +15,8 @@ from esphome.const import (
 
 CODEOWNERS = ["@latonita"]
 
+MULTI_CONF = True
+
 AUTO_LOAD = ["binary_sensor"]
 
 DEPENDENCIES = ["uart"]
