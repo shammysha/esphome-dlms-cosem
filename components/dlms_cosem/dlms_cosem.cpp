@@ -114,7 +114,7 @@ void DlmsCosemComponent::setup() {
   cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
           this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
           this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
-  BYTE_BUFFER_INIT(&this->buffers_.in);
+  this->buffers_.init();
 
 #ifdef USE_ESP32_FRAMEWORK_ARDUINO
   iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP32ArduinoUARTComponent *>(this->parent_));
