@@ -162,7 +162,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
 };
 #endif
 
-class DlmsCosemBinarySensor : public binary_sensor::BinarySensor {}
+class DlmsCosemBinarySensor : public binary_sensor::BinarySensor {};
 
 }  // namespace dlms_cosem
 }  // namespace esphome
