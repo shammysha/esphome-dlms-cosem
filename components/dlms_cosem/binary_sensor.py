@@ -33,6 +33,6 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     component = await cg.get_variable(config[CONF_DLMS_COSEM_ID])
-    var = await text_sensor.new_text_sensor(config)
-    if config[CONF_TYPE] == "CONNECTION":
+    var = await binary_sensor.new_binary_sensor(config)
+    if config[CONF_TYPE] == CONNECTION_STR:
         cg.add(component.register_connection_sensor(var))
