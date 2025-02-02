@@ -11,6 +11,8 @@ namespace dlms_cosem {
 
 static constexpr uint8_t MAX_TRIES = 10;
 
+stdstring CONNECTION = "CONNECTION"
+
 enum SensorType { SENSOR, TEXT_SENSOR };
 
 // const char * UNIT_STR_UNKNOWN = "Unknown unit";
@@ -161,6 +163,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
 
 };
 #endif
+
 
 }  // namespace dlms_cosem
 }  // namespace esphome

@@ -59,10 +59,10 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_flow_control_pin(GPIOPin *flow_control_pin) { this->flow_control_pin_ = flow_control_pin; };
 
   void register_sensor(DlmsCosemSensorBase *sensor);
+  void register_connection_sensor(binary_sensor::BinarySensor *sensor) { this->connection_sensor_ = sensor; }
+
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
 
-  void set_connection_sensor(binary_sensor::BinarySensor *sensor) { this->connection_sensor_ = sensor; }
-  
   uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
   bool has_error{true};
 
