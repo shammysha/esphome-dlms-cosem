@@ -8,40 +8,67 @@
     * Физический адрес: 17
     * Размер адреса: 2
 
-2. Добавлена функция update_server_address(logical_device, physical_device, addr_len)
-   Можно использовать в lambda для сканирования адресов устройства. 
-  
-  ```
-  globals:
-    - id: logaddr
-      type: uint16_t
-      initial_value: '1'
-      
-    - id: phyaddr
-      type: uint16_t
-      initial_value: '1'
-  
-    - id: servaddr
-      type: uint16_t
-      initial_value: '1' 
+2. Добавлен binary_sensor c обязательным атрибутом "type".
+   Список возможных значений атрибута:
+   
+   * "CONNECTION" - индикатор подключения к счетчику
 
-  interval:
-    interval: 10s
-    then:
-      - lambda: |-
-         if (id(energo_01)->has_error) {
-            if (id(phyaddr) < 255) {
-              id(phyaddr)++;
-            } else {
-              id(logaddr)++;
-              id(phyaddr) = 1;
-            }
-            id(energo_01)->has_error = false;
-            id(servaddr) = id(energo_01)->update_server_address(id(logaddr), id(phyaddr), 2);
-         }
-      - lambda: |-
-          ESP_LOGI("main", "Logical address: %d, physical address: %d, server address: %d", (int) id(logaddr), (int) id(phyaddr), (int) id(servaddr));
-```
+   Пример:
+
+    ```
+    binary_sensor: 
+      - platform: dlms_cosem
+        id: conn_status
+        name: ${devicename} Connection
+        type: CONNECTION
+        device_class: connectivity
+        entity_category: diagnostic
+        on_press:
+          switch.turn_on: conn_led
+        on_release:
+          switch.turn_off: conn_led
+    
+    ```
+3. Добавлена update_server_address(logical_device, physical_device, addr_len)
+   Можно использовать в lambda для сканирования адресов устройства совместно с вышеупомянутым binary_sensor. 
+  
+      ```
+      globals:
+        - id: logaddr
+          type: uint16_t
+          initial_value: '1'
+          
+        - id: phyaddr
+          type: uint16_t
+          initial_value: '1'
+      
+        - id: servaddr
+          type: uint16_t
+          initial_value: '1' 
+    
+      binary_sensor: 
+        - platform: dlms_cosem
+          type: CONNECTION
+          .....
+          
+          on_release:
+            - lambda: |-
+                if (id(phyaddr) < 255) {
+                  id(phyaddr)++;
+                } else {
+                  id(logaddr)++;
+                  id(phyaddr) = 1;
+                }
+                id(servaddr) = id(energo_01)->update_server_address(id(logaddr), id(phyaddr), 2);
+            - lambda: |-
+                ESP_LOGI("main", "Logical address: %d, physical address: %d, server address: %d", (int) id(logaddr), (int) id(phyaddr), (int) id(servaddr));
+    
+      interval: # выводим в лог текущие настройки, чтобы не искать последнее изменение по логу
+        interval: 10s
+        then:
+          - lambda: |-
+              ESP_LOGI("main", "Logical address: %d, physical address: %d, server address: %d", (int) id(logaddr), (int) id(phyaddr), (int) id(servaddr));
+      ```
 
 
 
