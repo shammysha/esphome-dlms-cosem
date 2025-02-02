@@ -19,8 +19,8 @@ TYPE_ENUM = ["CONNECTION"]
 DlmsCosemBinarySensor = dlms_cosem_ns.class_(binary_sensor.BinarySensor)
 
 CONFIG_SCHEMA = cv.All(
-    text_sensor.text_sensor_schema(
-        DlmsCosemBinarySensor,
+    binary_sensor.binary_sensor_schema(
+        BinarySensor,
     ).extend(
         {
             cv.GenerateID(CONF_DLMS_COSEM_ID): cv.use_id(DlmsCosem),
