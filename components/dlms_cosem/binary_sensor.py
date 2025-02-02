@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome.components import binary_sensor
 from esphome.const import (
     CONF_TYPE
-}
+)
 from . import (
     DlmsCosem,
     dlms_cosem_ns,
