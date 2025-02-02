@@ -21,7 +21,7 @@ DlmsCosemBinarySensor = dlms_cosem_ns.class_("DlmsCosemBinarySensor", binary_sen
 
 CONFIG_SCHEMA = cv.All(
     binary_sensor.binary_sensor_schema(
-        BinarySensor,
+        DlmsCosemBinarySensor,
     ).extend(
         {
             cv.GenerateID(CONF_DLMS_COSEM_ID): cv.use_id(DlmsCosem),
