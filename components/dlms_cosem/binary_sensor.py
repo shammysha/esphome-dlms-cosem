@@ -15,7 +15,7 @@ from . import (
 
 AUTO_LOAD = ["dlms_cosem"]
 
-SENSOR_TYPES = [ "CONNECTION" ]
+CONNECTION_STR = "CONNECTION"
 
 DlmsCosemBinarySensor = dlms_cosem_ns.class_("DlmsCosemBinarySensor", binary_sensor.BinarySensor)
 
@@ -25,7 +25,7 @@ CONFIG_SCHEMA = cv.All(
     ).extend(
         {
             cv.GenerateID(CONF_DLMS_COSEM_ID): cv.use_id(DlmsCosem),
-            cv.Required(CONF_TYPE): cv.any(SENSOR_TYPES)
+            cv.Required(CONF_TYPE): cv.Any(CONNECTION_STR),
         }
     )
 )
