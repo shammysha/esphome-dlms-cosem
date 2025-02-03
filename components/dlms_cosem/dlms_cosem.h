@@ -16,6 +16,7 @@
 
 #include "dlms_cosem_uart.h"
 #include "dlms_cosem_sensor.h"
+#include "object_locker.h"
 
 //##include "gxignore-arduino.h"
 
@@ -26,8 +27,6 @@
 
 namespace esphome {
 namespace dlms_cosem {
-
-static const char *TAG = "dlms_cosem";
 
 static const size_t DEFAULT_IN_BUF_SIZE = 256;
 static const size_t MAX_OUT_BUF_SIZE = 128;
@@ -42,6 +41,8 @@ using DlmsResponseParser = std::function<int()>;
 
 class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
  public:
+  DlmsCosemComponent() : tag_(generateTag()){};
+
   void setup() override;
   void dump_config() override;
   void loop() override;
@@ -95,6 +96,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   enum class State : uint8_t {
     NOT_INITIALIZED,
     IDLE,
+    TRY_LOCK_BUS,
     WAIT,
     COMMS_TX,
     COMMS_RX,
@@ -115,6 +117,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
     DISCONNECT_REQ,
     PUBLISH,
   } state_{State::NOT_INITIALIZED};
+  State last_reported_state_{State::NOT_INITIALIZED};
 
   struct {
     uint32_t start_time{0};
@@ -141,8 +144,8 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   int set_sensor_scale_and_unit(DlmsCosemSensor *sensor);
   int set_sensor_value(DlmsCosemSensorBase *sensor, const char *obis);
 
-
   void indicate_transmission(bool transmission_on);
+
 
   // void read_reply_and_go_next_state_(ReadFunction read_fn, State next_state, uint8_t retries, bool mission_critical,
   //                                    bool check_crc);
@@ -172,6 +175,12 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   uint32_t baud_rate_{9600};
 
   uint32_t last_rx_time_{0};
+
+  struct LoopState {
+    uint32_t session_started_ms{0};             // start of session
+    SensorMap::iterator request_iter{nullptr};  // talking to meter
+    SensorMap::iterator sensor_iter{nullptr};   // publishing sensor values
+  } loop_state_;
 
   struct InOutBuffers {
     //    uint8_t out[MAX_OUT_BUF_SIZE];
@@ -244,13 +253,22 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
     uint8_t failures_{0};
 
     float crc_errors_per_session() const { return (float) crc_errors_ / connections_tried_; }
-    void dump();
   } stats_;
+  void stats_dump();
 
   uint8_t failures_before_reboot_{0};
 
   const char *dlms_error_to_string(int error);
   const char *dlms_data_type_to_string(DLMS_DATA_TYPE vt);
+
+  bool try_lock_uart_session_();
+  void unlock_uart_session_();
+
+ private:
+  static uint8_t next_obj_id_;
+  std::string tag_;
+
+  static std::string generateTag();
 };
 
 }  // namespace dlms_cosem

@@ -1,3 +1,4 @@
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -75,9 +76,6 @@ cov.xml
 # pyenv
 .python-version
 
-# asdf
-.tool-versions
-
 # Environments
 .env
 .venv
@@ -140,6 +138,7 @@ sdkconfig.*
 
 .tests/
 
-/components
-/managed_components
+.PVS-Studio/
 
+/*.yaml
+/*.yml
