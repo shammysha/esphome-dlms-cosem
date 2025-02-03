@@ -247,9 +247,11 @@ void DlmsCosemComponent::loop() {
       if (this->check_rx_timeout_()) {
         ESP_LOGE(TAG, "RX timeout.");
         this->has_error = true;
-        if (this->connection_sensor_) {
-          this->connection_sensor_->publish_state(0);
+#ifdef USE_BINARY_SENSOR
+        if (this->connection_binary_sensor_) {
+          this->connection_binary_sensor_->publish_state(0);
         }
+#endif
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
         this->stats_.invalid_frames_ += reading_state_.err_invalid_frames;
         // if mission critical
@@ -507,9 +509,11 @@ void DlmsCosemComponent::update() {
     return;
   }
   ESP_LOGD(TAG, "Starting data collection");
-  if (this->connection_sensor_) {
-    this->connection_sensor_->publish_state(1);
+#ifdef USE_BINARY_SENSOR
+  if (this->connection_binary_sensor_) {
+    this->connection_binary_sensor_->publish_state(1);
   }
+#endif
   this->has_error = false;
   this->set_next_state_(State::OPEN_SESSION);
 }

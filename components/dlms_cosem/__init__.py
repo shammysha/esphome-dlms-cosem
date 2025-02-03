@@ -5,23 +5,15 @@ import esphome.config_validation as cv
 from esphome.components import uart, binary_sensor
 from esphome.const import (
     CONF_ID,
-    CONF_NAME,
     CONF_AUTH,
     CONF_BAUD_RATE,
     CONF_RECEIVE_TIMEOUT,
     CONF_UPDATE_INTERVAL,
     CONF_FLOW_CONTROL_PIN,
     CONF_PASSWORD,
-    CONF_DEVICE_CLASS,
-    CONF_ENTITY_CATEGORY,
-    CONF_DISABLED_BY_DEFAULT,
-    DEVICE_CLASS_CONNECTIVITY,
-    ENTITY_CATEGORY_DIAGNOSTIC
 )
 
 CODEOWNERS = ["@latonita","@shammysha"]
-
-AUTO_LOAD = ["binary_sensor"]
 
 DEPENDENCIES = ["uart"]
 

@@ -3,7 +3,10 @@
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/sensor/sensor.h"
+
+#ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#endif
 
 #include <cstdint>
 #include <string>
@@ -64,11 +67,15 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_flow_control_pin(GPIOPin *flow_control_pin) { this->flow_control_pin_ = flow_control_pin; };
 
   void register_sensor(DlmsCosemSensorBase *sensor);
-  void register_connection_sensor(binary_sensor::BinarySensor *sensor) { this->connection_sensor_ = sensor; }
 
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
 
   bool has_error{true};
+
+
+#ifdef USE_BINARY_SENSOR  
+  SUB_BINARY_SENSOR(connection)
+#endif
 
  protected:
   uint16_t client_address_{16};
@@ -85,7 +92,6 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   SensorMap sensors_;
 
   sensor::Sensor *crc_errors_per_session_sensor_{};
-  binary_sensor::BinarySensor *connection_sensor_{nullptr};
 
   enum class State : uint8_t {
     NOT_INITIALIZED,
