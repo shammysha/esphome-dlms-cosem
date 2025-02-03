@@ -15,7 +15,10 @@ from . import (
 AUTO_LOAD = ["dlms_cosem"]
 
 CONF_TRANSMISSION = "transmission"
-ICON_CONNECT = "mdi:swap-horizontal"
+CONF_SESSION = "session"
+
+ICON_TRANSMISSION = "mdi:swap-horizontal"
+ICON_SESSION = "mdi:lan-connect"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -23,7 +26,12 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_TRANSMISSION):  binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_CONNECTIVITY,
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-            icon=ICON_CONNECT,
+            icon=ICON_TRANSMISSION,
+        ),
+        cv.Optional(CONF_SESSION):  binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_CONNECTIVITY,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            icon=ICON_SESSION,
         ),
     }
 )
@@ -34,3 +42,7 @@ async def to_code(config):
     if conf := config.get(CONF_TRANSMISSION):
         sensor = await binary_sensor.new_binary_sensor(config[CONF_TRANSMISSION])
         cg.add(hub.set_transmission_binary_sensor(sensor))
+
+    if conf := config.get(CONF_SESSION):
+        sensor = await binary_sensor.new_binary_sensor(config[CONF_SESSION])
+        cg.add(hub.set_session_binary_sensor(sensor))

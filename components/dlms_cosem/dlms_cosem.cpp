@@ -226,10 +226,12 @@ void DlmsCosemComponent::loop() {
     case State::IDLE: {
       this->update_last_rx_time_();
       this->indicate_transmission(false);
+      this->indicate_session(false);
     } break;
 
     case State::TRY_LOCK_BUS: {
       this->log_state_();
+      this->indicate_session(true);
       if (this->try_lock_uart_session_()) {
         this->set_next_state_(State::OPEN_SESSION);
       } else {
@@ -523,7 +525,6 @@ void DlmsCosemComponent::update() {
   }
   ESP_LOGD(TAG, "Starting data collection");
   this->has_error = false;
-  this->indicate_transmission(true);
   this->set_next_state_(State::TRY_LOCK_BUS);
 }
 
@@ -759,6 +760,14 @@ void DlmsCosemComponent::indicate_transmission(bool transmission_on) {
 #ifdef USE_BINARY_SENSOR
   if (this->transmission_binary_sensor_) {
     this->transmission_binary_sensor_->publish_state(transmission_on);
+  }
+#endif
+}
+
+void DlmsCosemComponent::indicate_session(bool session_on) {
+#ifdef USE_BINARY_SENSOR
+  if (this->session_binary_sensor_) {
+    this->session_binary_sensor_->publish_state(session_on);
   }
 #endif
 }
