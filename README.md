@@ -3,12 +3,14 @@
 
 Инструкции по подключению esp32/esp8266 к счётчику можно увидеть в соседнем компоненте https://github.com/latonita/esphome-energomera-iec
 
+Через оптопорт можно работать с приборами, которые сразу работают на скорости 9600. В случае, если необходимо сначала подключаться на скорости 300, а потом выходить на рабочую скорость - пока не поддерживается (но, по факту, нужно только найти жертву и протестировать).
+
 # Функции
 ## Реализованы
 - Подключение без аутентификации (NONE) и с низким уровнем (LOW - доступ с паролем).
 - Поддержка базовых цифровых типов данных (int/float)
 - Поддержка базовых текстовых данных (octet-string)
-- Поддержка русских символов в ответах от счетчиков (Нартис И100-W112, "Тип устройства",)
+- Поддержка русских символов в ответах от счетчиков (Нартис И100-W112, РиМ 489 , ... )
 - Задание логического и физического адресов
 - Работа с несколькими счетчиками на одной шине
 
@@ -17,6 +19,7 @@
 - Работа с данными типа datetime
 - Синхронизация времени
 - Управление реле
+- Подключение через оптопорт согласно стандарта - выбор скорости 300 и далее выбор 9600
 - .. предлагайте ваши варианты
 
 Для будущей разработки требуется наличие счетчика для проверки
@@ -58,7 +61,7 @@ dlms_cosem:
 - **receive_timeout** (*Optional*) как долго ждем на наш запрос мы ждем ответ от счетчика. по-умолчанию `500ms`
 - **delay_between_requests** (*Optional*) размер паузы между последовательными запросами к счетчику. по-умолчанию `50ms`
 - **flow_control_pin** (*Optional*)  указываем, если 485 модуль требует сигнал направления передачи RE/DE 
-
+- **id** (*Optional*) Задать, если приборов больше одного. Этот идентификатор указывать в сенсорах в поле `dlms_cosem_id`
 
 
 ## Чуть побольше о выборе адреса сервера и клиента
@@ -98,6 +101,8 @@ dlms_cosem:
 - `sensor` - числовые данные, int/float
 
 OBIS коды берем из стандарта СПОДЭС и из инструкций к счетчику
+
+Если приборов больше одного, то необходимо в каждом сенсоре указывать `dlms_cosem_id`.
 
 ## Sensor
 ```yaml
@@ -182,8 +187,8 @@ globals:
 
 binary_sensor: 
   - platform: dlms_cosem
-    connection: 
-      name: Connection
+    session: 
+      name: Session
       #.....
       on_release:
         - lambda: |-
@@ -202,6 +207,85 @@ interval: # выводим в лог текущие настройки, чтоб
   then:
     - lambda: |-
         ESP_LOGI("main", "Logical address: %d, physical address: %d, server address: %d", (int) id(logaddr), (int) id(phyaddr), (int) id(servaddr));
+```
+# Несколько счетчиков
+При работе с несколькими счетчиками необходимо аккуратно указывать идентификаторы.
+
+
+```yaml
+
+uart:
+  - id: bus_1
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 9600
+    data_bits: 8
+    parity: NONE
+    stop_bits: 1 
+
+  - id: bus_2
+    rx_pin: GPIO23
+    tx_pin: GPIO22
+    baud_rate: 9600
+    data_bits: 8
+    parity: NONE
+    stop_bits: 1 
+
+dlms_cosem:
+  - id: energo_1
+    uart_id: bus_1
+    client_address: 32
+    server_address: 
+      logical_device: 1
+      physical_device: 576
+    auth: true
+    password: "12345678"
+    update_interval: 30s
+    receive_timeout: 500ms
+
+  - id: energo_2
+    uart_id: bus_1
+    client_address: 32
+    server_address: 
+      logical_device: 1
+      physical_device: 16
+    auth: true
+    password: "12345678"
+    update_interval: 30s
+    receive_timeout: 500ms
+
+  - id: nartis_3
+    uart_id: bus_2
+    client_address: 32
+    server_address: 
+      logical_device: 1
+      physical_device: 17
+      address_length: 2
+    auth: true
+    password: "00000001"
+
+
+text_sensor:
+  - platform: dlms_cosem
+    dlms_cosem_id: energo_2 # id хаба
+    name: Serial number
+    obis_code: 0.0.96.1.0.255
+    entity_category: diagnostic
+    cp1251: true
+
+  
+
+sensor:
+  - platform: dlms_cosem
+    dlms_cosem_id: nartis_3 # id хаба
+    id: current_phase
+    name: Current
+    obis_code: 1.0.11.7.0.255
+    unit_of_measurement: A
+    accuracy_decimals: 1
+    device_class: current
+    state_class: measurement
+
 ```
 
 # Особенности счетчиков
