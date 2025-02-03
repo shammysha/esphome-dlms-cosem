@@ -5,10 +5,6 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #endif
 
-#ifdef USE_BINARY_SENSOR
-#include "esphome/components/binary_sensor/binary_sensor.h"
-#endif
-
 namespace esphome {
 namespace dlms_cosem {
 
@@ -165,8 +161,5 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
 };
 #endif
 
-#ifdef USE_BINARY_SENSOR
-class DlmsCosemBinarySensor : public binary_sensor::BinarySensor {};
-#endif
 }  // namespace dlms_cosem
 }  // namespace esphome
