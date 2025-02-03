@@ -15,6 +15,8 @@ from esphome.const import (
 
 CODEOWNERS = ["@latonita","@shammysha"]
 
+MULTI_CONF = True
+
 DEPENDENCIES = ["uart"]
 
 DEFAULTS_MAX_SENSOR_INDEX = 12
