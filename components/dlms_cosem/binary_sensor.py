@@ -17,8 +17,6 @@ AUTO_LOAD = ["dlms_cosem"]
 CONF_TRANSMISSION = "transmission"
 ICON_CONNECT = "mdi:swap-horizontal"
 
-#DlmsCosemBinarySensor = dlms_cosem_ns.class_("DlmsCosemBinarySensor", binary_sensor.BinarySensor)
-
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_DLMS_COSEM_ID): cv.use_id(DlmsCosem),
