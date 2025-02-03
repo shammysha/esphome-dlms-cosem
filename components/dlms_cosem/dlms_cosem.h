@@ -3,7 +3,10 @@
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/sensor/sensor.h"
+
+#ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#endif
 
 #include <cstdint>
 #include <string>
@@ -46,8 +49,13 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void update() override;
   float get_setup_priority() const override { return setup_priority::DATA; };
 
-  void set_client_address(const uint16_t addr) { this->client_address_ = addr; };
-  void set_server_address(const uint16_t addr) { this->server_address_ = addr; };
+  void set_client_address(uint16_t addr) { this->client_address_ = addr; };
+
+  void set_server_address(uint16_t addr);
+  uint16_t set_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+  void update_server_address(uint16_t addr);
+  uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+
   void set_auth_required(bool auth) { this->auth_required_ = auth; };
   void set_password(const std::string &addr) { this->password_ = addr; };
 
@@ -60,7 +68,14 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_flow_control_pin(GPIOPin *flow_control_pin) { this->flow_control_pin_ = flow_control_pin; };
 
   void register_sensor(DlmsCosemSensorBase *sensor);
+
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
+
+  bool has_error{true};
+
+#ifdef USE_BINARY_SENSOR
+  SUB_BINARY_SENSOR(transmission)
+#endif
 
  protected:
   uint16_t client_address_{16};
@@ -70,7 +85,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   uint32_t receive_timeout_ms_{500};
   uint32_t delay_between_requests_ms_{50};
-
+  
   GPIOPin *flow_control_pin_{nullptr};
   std::unique_ptr<DlmsCosemUart> iuart_;
 
@@ -128,6 +143,9 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   int set_sensor_scale_and_unit(DlmsCosemSensor *sensor);
   int set_sensor_value(DlmsCosemSensorBase *sensor, const char *obis);
+
+  void indicate_transmission(bool transmission_on);
+
 
   // void read_reply_and_go_next_state_(ReadFunction read_fn, State next_state, uint8_t retries, bool mission_critical,
   //                                    bool check_crc);

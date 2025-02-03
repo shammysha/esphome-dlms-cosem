@@ -17,6 +17,8 @@ DlmsCosemTextSensor = dlms_cosem_ns.class_(
     "DlmsCosemTextSensor", text_sensor.TextSensor
 )
 
+CONF_CP1251 = "cp1251"
+
 CONFIG_SCHEMA = cv.All(
     text_sensor.text_sensor_schema(
         DlmsCosemTextSensor,
@@ -26,6 +28,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_OBIS_CODE): obis_code,
             cv.Optional(CONF_DONT_PUBLISH, default=False): cv.boolean,
             cv.Optional(CONF_CLASS, default=1): cv.int_,
+            cv.Optional(CONF_CP1251, default=False): cv.boolean,
         }
     ),
     cv.has_exactly_one_key(CONF_OBIS_CODE),
@@ -38,4 +41,5 @@ async def to_code(config):
     cg.add(var.set_obis_code(config[CONF_OBIS_CODE]))
     cg.add(var.set_dont_publish(config.get(CONF_DONT_PUBLISH)))
     cg.add(var.set_obis_class(config[CONF_CLASS]))
+    cg.add(var.set_cp1251_conversion_required(config[CONF_CP1251]))
     cg.add(component.register_sensor(var))

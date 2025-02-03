@@ -1,3 +1,4 @@
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -141,5 +142,3 @@ sdkconfig.*
 
 /*.yaml
 /*.yml
-!ce102m.yaml
-!ce303.yaml

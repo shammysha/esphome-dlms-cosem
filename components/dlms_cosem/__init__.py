@@ -13,11 +13,9 @@ from esphome.const import (
     CONF_PASSWORD,
 )
 
-CODEOWNERS = ["@latonita"]
+CODEOWNERS = ["@latonita","@shammysha"]
 
 MULTI_CONF = True
-
-AUTO_LOAD = ["binary_sensor"]
 
 DEPENDENCIES = ["uart"]
 
@@ -26,17 +24,19 @@ DEFAULTS_BAUD_RATE_HANDSHAKE = 9600
 DEFAULTS_BAUD_RATE_SESSION = 9600
 DEFAULTS_RECEIVE_TIMEOUT = "500ms"
 DEFAULTS_DELAY_BETWEEN_REQUESTS = "50ms"
-DEFAULTS_UPDATE_INTERVAL = "30s"
+DEFAULTS_UPDATE_INTERVAL = "60s"
 
 CONF_DLMS_COSEM_ID = "dlms_cosem_id"
 CONF_OBIS_CODE = "obis_code"
 CONF_CLIENT_ADDRESS = "client_address"
 CONF_SERVER_ADDRESS = "server_address"
+CONF_LOGICAL_DEVICE = "logical_device"
+CONF_PHYSICAL_DEVICE = "physical_device"
+CONF_ADDRESS_LENGTH = "address_length"
 CONF_DELAY_BETWEEN_REQUESTS = "delay_between_requests"
 CONF_DONT_PUBLISH = "dont_publish"
 CONF_CLASS = "class"
 
-CONF_INDICATOR = "indicator"
 CONF_REBOOT_AFTER_FAILURE = "reboot_after_failure"
 
 CONF_BAUD_RATE_HANDSHAKE = "baud_rate_handshake"
@@ -47,7 +47,7 @@ DlmsCosem = dlms_cosem_ns.class_(
 )
 
 BAUD_RATES = [300, 600, 1200, 2400, 4800, 9600, 19200]
-
+ADDRESS_LENGTH_ENUM = [1, 2, 4]
 
 def obis_code(value):
     value = cv.string(value)
@@ -69,7 +69,14 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(DlmsCosem),
             cv.Optional(CONF_CLIENT_ADDRESS, default=16): cv.positive_int,
-            cv.Optional(CONF_SERVER_ADDRESS, default=1): cv.positive_int,
+            cv.Optional(CONF_SERVER_ADDRESS, default=1): cv.Any(
+                cv.positive_int,
+                cv.Schema({
+                    cv.Optional(CONF_LOGICAL_DEVICE, default=1): cv.positive_int,
+                    cv.Required(CONF_PHYSICAL_DEVICE): cv.positive_int,
+                    cv.Optional(CONF_ADDRESS_LENGTH, default=2): cv.one_of(1, 2, 4),
+                })
+            ),
             cv.Optional(CONF_AUTH, default=False): cv.boolean,
             cv.Optional(CONF_PASSWORD, default=""): cv.string,
             cv.Optional(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
@@ -97,7 +104,6 @@ CONFIG_SCHEMA = cv.All(
     .extend(uart.UART_DEVICE_SCHEMA)
 )
 
-
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -107,13 +113,14 @@ async def to_code(config):
         pin = await cg.gpio_pin_expression(flow_control_pin)
         cg.add(var.set_flow_control_pin(pin))
 
-    if indicator_config := config.get(CONF_INDICATOR):
-        sens = cg.new_Pvariable(indicator_config[CONF_ID])
-        await binary_sensor.register_binary_sensor(sens, indicator_config)
-        cg.add(var.set_indicator(sens))
-
+    if isinstance(config[CONF_SERVER_ADDRESS], int):
+        cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))
+    else:
+        cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS][CONF_LOGICAL_DEVICE], 
+                                      config[CONF_SERVER_ADDRESS][CONF_PHYSICAL_DEVICE], 
+                                      config[CONF_SERVER_ADDRESS][CONF_ADDRESS_LENGTH]))    
+     
     cg.add(var.set_client_address(config[CONF_CLIENT_ADDRESS]))
-    cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))
     cg.add(var.set_auth_required(config[CONF_AUTH]))
     cg.add(var.set_password(config[CONF_PASSWORD]))
     cg.add(var.set_baud_rates(config[CONF_BAUD_RATE_HANDSHAKE], config[CONF_BAUD_RATE]))
@@ -121,6 +128,7 @@ async def to_code(config):
     cg.add(var.set_delay_between_requests_ms(config[CONF_DELAY_BETWEEN_REQUESTS]))
     cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
     cg.add(var.set_reboot_after_failure(config[CONF_REBOOT_AFTER_FAILURE]))
-
-#    cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c.platformio")
-    cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
+    
+    cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c#platformio")
+    # Its a hard-copy of this one, which is a 2-y.o. fork of official gurux repo + platformio json lib file
+    # cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
