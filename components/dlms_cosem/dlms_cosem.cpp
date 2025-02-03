@@ -108,14 +108,45 @@ void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
   iuart_->update_baudrate(baud_rate);
 }
 
+void DlmsCosemComponent::set_server_address(uint16_t address) { this->server_address_ = address; };
+
+uint16_t DlmsCosemComponent::set_server_address(uint16_t logicalAddress, uint16_t physicalAddress,
+                                                unsigned char addressSize) {
+  this->server_address_ = cl_getServerAddress(logicalAddress, physicalAddress, addressSize);
+
+  ESP_LOGD(TAG, "Server address = %d (based on logical_address=%d, physical_address=%d, address_size=%d)",
+           this->server_address_, logicalAddress, physicalAddress, addressSize);
+  return this->server_address_;
+}
+
+void DlmsCosemComponent::update_server_address(uint16_t addr) {
+  this->server_address_ = addr;
+  cl_clear(&dlms_settings_);
+  cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
+          this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
+          this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
+
+  this->update();
+}
+
+uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress,
+                                                   unsigned char addressSize) {
+  this->set_server_address(logicalAddress, physicalAddress, addressSize);
+  this->update_server_address(this->server_address_);
+  return this->server_address_;
+}
+
 void DlmsCosemComponent::setup() {
   ESP_LOGD(TAG, "setup");
 
   cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
           this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
           this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
+
   this->buffers_.init();
 
+  this->indicate_transmission(false);
+  
 #ifdef USE_ESP32_FRAMEWORK_ARDUINO
   iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP32ArduinoUARTComponent *>(this->parent_));
 #endif
@@ -194,6 +225,7 @@ void DlmsCosemComponent::loop() {
   switch (this->state_) {
     case State::IDLE: {
       this->update_last_rx_time_();
+      this->indicate_transmission(false);
     } break;
 
     case State::WAIT:
@@ -205,6 +237,7 @@ void DlmsCosemComponent::loop() {
 
     case State::COMMS_TX: {
       this->log_state_();
+      this->indicate_transmission(true);
       if (buffers_.has_more_messages_to_send()) {
         send_dlms_messages_();
       } else {
@@ -217,6 +250,10 @@ void DlmsCosemComponent::loop() {
 
       if (this->check_rx_timeout_()) {
         ESP_LOGE(TAG, "RX timeout.");
+        this->has_error = true;
+
+        this->indicate_transmission(false);
+
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
         this->stats_.invalid_frames_ += reading_state_.err_invalid_frames;
         // if mission critical
@@ -264,11 +301,10 @@ void DlmsCosemComponent::loop() {
 
       if (buffers_.reply.complete == 0) {
         ESP_LOGD(TAG, "DLMS Reply not complete, need more HDLC frames. Continue reading.");
-        // buffers_.reply.complete = 1;
-        //  data in multiple frames.
-        //  never tested, always got complete reply so far
-        //  in theory we just keep reading until full reply is received.
-        //  return;
+        // data in multiple frames.
+        // we just keep reading until full reply is received.
+
+        return;
       }
 
       // if buffers_.reply.complete != 0
@@ -292,7 +328,6 @@ void DlmsCosemComponent::loop() {
       this->stats_.connections_tried_++;
       session_started_ms = millis();
       this->log_state_();
-
       this->clear_rx_buffers_();
       request_iter = this->sensors_.begin();
 
@@ -475,6 +510,8 @@ void DlmsCosemComponent::update() {
     return;
   }
   ESP_LOGD(TAG, "Starting data collection");
+  this->indicate_transmission(true);
+  this->has_error = false;
   this->set_next_state_(State::OPEN_SESSION);
 }
 
@@ -701,6 +738,14 @@ int DlmsCosemComponent::set_sensor_value(DlmsCosemSensorBase *sensor, const char
     ESP_LOGD(TAG, "OBIS code: %s, result != DLMS_ERROR_CODE_OK = %d", obis, this->dlms_reading_state_.last_error);
   }
   return this->dlms_reading_state_.last_error;
+}
+
+void DlmsCosemComponent::indicate_transmission(bool transmission_on) {
+#ifdef USE_BINARY_SENSOR
+  if (this->transmission_binary_sensor_) {
+    this->transmission_binary_sensor_->publish_state(transmission_on);
+  }
+#endif
 }
 
 void DlmsCosemComponent::send_dlms_messages_() {
