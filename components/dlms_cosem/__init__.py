@@ -19,7 +19,7 @@ from esphome.const import (
     ENTITY_CATEGORY_DIAGNOSTIC
 )
 
-CODEOWNERS = ["@latonita"]
+CODEOWNERS = ["@shammysha", "@latonita"]
 
 AUTO_LOAD = ["binary_sensor"]
 
