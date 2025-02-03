@@ -222,11 +222,6 @@ void DlmsCosemComponent::loop() {
   if (!this->is_ready() || this->state_ == State::NOT_INITIALIZED)
     return;
 
-  // in-loop static variables
-  // static uint32_t session_started_ms{0};            // start of session
-  // static auto request_iter = this->sensors_.end();  // talking to meter
-  // static auto sensor_iter = this->sensors_.end();   // publishing sensor values
-
   switch (this->state_) {
     case State::IDLE: {
       this->update_last_rx_time_();
