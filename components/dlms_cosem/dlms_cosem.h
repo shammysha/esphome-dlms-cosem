@@ -45,8 +45,13 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void update() override;
   float get_setup_priority() const override { return setup_priority::DATA; };
 
-  void set_client_address(const uint16_t addr) { this->client_address_ = addr; };
-  void set_server_address(const uint16_t addr) { this->server_address_ = addr; };
+  void set_client_address(uint16_t addr) { this->client_address_ = addr; };
+  
+  void set_server_address(uint16_t addr);
+  uint16_t set_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+  void  update_server_address(uint16_t addr);
+  uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+
   void set_auth_required(bool auth) { this->auth_required_ = auth; };
   void set_password(const std::string &addr) { this->password_ = addr; };
 
@@ -63,7 +68,6 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
 
-  uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
   bool has_error{true};
 
  protected:

@@ -108,29 +108,32 @@ void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
   iuart_->update_baudrate(baud_rate);
 }
 
-uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
-  uint16_t value;
-  if (addressSize < 4 && physicalAddress < 0x80 && logicalAddress < 0x80)
-  {
-      value = (uint16_t)(logicalAddress << 7 | physicalAddress);
-  }
-  else if (physicalAddress < 0x4000 && logicalAddress < 0x4000)
-  {
-      value = (uint16_t)(logicalAddress << 14 | physicalAddress);
-  }
-  else
-  {
-      value = 0;
-  }
-  this->set_server_address(value);  
+void DlmsCosemComponent::set_server_address(uint16_t address) { this->server_address_ = address; };
+
+uint16_t DlmsCosemComponent::set_server_address(uint16_t logicalAddress, uint16_t physicalAddress,
+                                                unsigned char addressSize) {
+  this->server_address_ = cl_getServerAddress(logicalAddress, physicalAddress, addressSize);
+
+  ESP_LOGD(TAG, "Server address = %d (based on logical_address=%d, physical_address=%d, address_size=%d)",
+           this->server_address_, logicalAddress, physicalAddress, addressSize);
+  return this->server_address_;
+}
+
+void DlmsCosemComponent::update_server_address(uint16_t addr) {
+  this->server_address_ = addr;
   cl_clear(&dlms_settings_);
   cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
-            this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
-            this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);  
+          this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
+          this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
 
   this->update();
+}
 
-  return value;
+uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress,
+                                                   unsigned char addressSize) {
+  this->set_server_address(logicalAddress, physicalAddress, addressSize);
+  this->update_server_address(this->server_address_);
+  return this->server_address_;
 }
 
 void DlmsCosemComponent::setup() {
@@ -139,7 +142,8 @@ void DlmsCosemComponent::setup() {
   cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
           this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
           this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
-  BYTE_BUFFER_INIT(&this->buffers_.in);
+
+  this->buffers_.init();
 
 #ifdef USE_ESP32_FRAMEWORK_ARDUINO
   iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP32ArduinoUARTComponent *>(this->parent_));
@@ -258,7 +262,7 @@ void DlmsCosemComponent::loop() {
         }
         return;
       }
-     
+
       // the folowing basic algorithm to be implemented to read DLMS packet
       // first version, no retries
       // 1. receive proper hdlc frame

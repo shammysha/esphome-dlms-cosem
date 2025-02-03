@@ -19,7 +19,7 @@ from esphome.const import (
     ENTITY_CATEGORY_DIAGNOSTIC
 )
 
-CODEOWNERS = ["@shammysha", "@latonita"]
+CODEOWNERS = ["@latonita","@shammysha"]
 
 AUTO_LOAD = ["binary_sensor"]
 
@@ -30,7 +30,7 @@ DEFAULTS_BAUD_RATE_HANDSHAKE = 9600
 DEFAULTS_BAUD_RATE_SESSION = 9600
 DEFAULTS_RECEIVE_TIMEOUT = "500ms"
 DEFAULTS_DELAY_BETWEEN_REQUESTS = "50ms"
-DEFAULTS_UPDATE_INTERVAL = "30s"
+DEFAULTS_UPDATE_INTERVAL = "60s"
 
 CONF_DLMS_COSEM_ID = "dlms_cosem_id"
 CONF_OBIS_CODE = "obis_code"
@@ -76,10 +76,14 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(DlmsCosem),
             cv.Optional(CONF_CLIENT_ADDRESS, default=16): cv.positive_int,
-            cv.Optional(CONF_SERVER_ADDRESS): cv.positive_int,
-            cv.Optional(CONF_LOGICAL_DEVICE): cv.positive_int,
-            cv.Optional(CONF_PHYSICAL_DEVICE): cv.positive_int,
-            cv.Optional(CONF_ADDRESS_LENGTH): cv.one_of(1, 2, 4),
+            cv.Optional(CONF_SERVER_ADDRESS, default=1): cv.Any(
+                cv.positive_int,
+                cv.Schema({
+                    cv.Optional(CONF_LOGICAL_DEVICE, default=1): cv.positive_int,
+                    cv.Required(CONF_PHYSICAL_DEVICE): cv.positive_int,
+                    cv.Optional(CONF_ADDRESS_LENGTH, default=2): cv.one_of(1, 2, 4),
+                })
+            ),
             cv.Optional(CONF_AUTH, default=False): cv.boolean,
             cv.Optional(CONF_PASSWORD, default=""): cv.string,
             cv.Optional(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
@@ -104,9 +108,7 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
-    .extend(uart.UART_DEVICE_SCHEMA),
-    cv.has_none_or_all_keys(CONF_LOGICAL_DEVICE, CONF_PHYSICAL_DEVICE, CONF_ADDRESS_LENGTH),
-    cv.has_exactly_one_key(CONF_SERVER_ADDRESS, CONF_PHYSICAL_DEVICE)
+    .extend(uart.UART_DEVICE_SCHEMA)
 )
 
 async def to_code(config):
@@ -123,12 +125,13 @@ async def to_code(config):
         await binary_sensor.register_binary_sensor(sens, indicator_config)
         cg.add(var.set_indicator(sens))
 
-    if config.get(CONF_SERVER_ADDRESS):
-        cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))    
-
-    if config.get(CONF_LOGICAL_DEVICE):
-        cg.add(var.update_server_address(config[CONF_LOGICAL_DEVICE], config[CONF_PHYSICAL_DEVICE], config[CONF_ADDRESS_LENGTH]))    
-        
+    if isinstance(config[CONF_SERVER_ADDRESS], int):
+        cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))
+    else:
+        cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS][CONF_LOGICAL_DEVICE], 
+                                      config[CONF_SERVER_ADDRESS][CONF_PHYSICAL_DEVICE], 
+                                      config[CONF_SERVER_ADDRESS][CONF_ADDRESS_LENGTH]))    
+     
     cg.add(var.set_client_address(config[CONF_CLIENT_ADDRESS]))
     cg.add(var.set_auth_required(config[CONF_AUTH]))
     cg.add(var.set_password(config[CONF_PASSWORD]))
@@ -138,5 +141,6 @@ async def to_code(config):
     cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
     cg.add(var.set_reboot_after_failure(config[CONF_REBOOT_AFTER_FAILURE]))
     
-#    cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c.platformio")
-    cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
+    cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c#platformio")
+    # Its a hard-copy of this one, which is a 2-y.o. fork of official gurux repo + platformio json lib file
+    # cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
