@@ -35,7 +35,6 @@ CONF_DELAY_BETWEEN_REQUESTS = "delay_between_requests"
 CONF_DONT_PUBLISH = "dont_publish"
 CONF_CLASS = "class"
 
-CONF_INDICATOR = "indicator"
 CONF_REBOOT_AFTER_FAILURE = "reboot_after_failure"
 
 CONF_BAUD_RATE_HANDSHAKE = "baud_rate_handshake"
@@ -111,11 +110,6 @@ async def to_code(config):
     if flow_control_pin := config.get(CONF_FLOW_CONTROL_PIN):
         pin = await cg.gpio_pin_expression(flow_control_pin)
         cg.add(var.set_flow_control_pin(pin))
-
-    if indicator_config := config.get(CONF_INDICATOR):
-        sens = cg.new_Pvariable(indicator_config[CONF_ID])
-        await binary_sensor.register_binary_sensor(sens, indicator_config)
-        cg.add(var.set_indicator(sens))
 
     if isinstance(config[CONF_SERVER_ADDRESS], int):
         cg.add(var.set_server_address(config[CONF_SERVER_ADDRESS]))

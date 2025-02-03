@@ -14,7 +14,7 @@ from . import (
 
 AUTO_LOAD = ["dlms_cosem"]
 
-CONF_CONNECTION = "connection"
+CONF_TRANSMISSION = "transmission"
 ICON_CONNECT = "mdi:swap-horizontal"
 
 DlmsCosemBinarySensor = dlms_cosem_ns.class_("DlmsCosemBinarySensor", binary_sensor.BinarySensor)
@@ -22,7 +22,7 @@ DlmsCosemBinarySensor = dlms_cosem_ns.class_("DlmsCosemBinarySensor", binary_sen
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_DLMS_COSEM_ID): cv.use_id(DlmsCosem),
-        cv.Required(CONF_CONNECTION):  binary_sensor.binary_sensor_schema(
+        cv.Optional(CONF_TRANSMISSION):  binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_CONNECTIVITY,
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
             icon=ICON_CONNECT,
@@ -33,6 +33,6 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     hub = await cg.get_variable(config[CONF_DLMS_COSEM_ID])
 
-    if conf := config.get(CONF_CONNECTION):
-        sensor = await binary_sensor.new_binary_sensor(config[CONF_CONNECTION])
-        cg.add(hub.set_connection_binary_sensor(sensor))
+    if conf := config.get(CONF_TRANSMISSION):
+        sensor = await binary_sensor.new_binary_sensor(config[CONF_TRANSMISSION])
+        cg.add(hub.set_transmission_binary_sensor(sensor))

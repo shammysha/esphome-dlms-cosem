@@ -133,7 +133,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
  protected:
   std::string value_;
 
-  void cp1251_to_utf8(char *out, const char *in) {
+  static void cp1251_to_utf8(char *out, const char *in) {
     static const int table[128] = {
         0x82D0,   0x83D0,   0x9A80E2, 0x93D1,   0x9E80E2, 0xA680E2, 0xA080E2, 0xA180E2, 0xAC82E2, 0xB080E2, 0x89D0,
         0xB980E2, 0x8AD0,   0x8CD0,   0x8BD0,   0x8FD0,   0x92D1,   0x9880E2, 0x9980E2, 0x9C80E2, 0x9D80E2, 0xA280E2,

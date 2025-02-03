@@ -145,6 +145,8 @@ void DlmsCosemComponent::setup() {
 
   this->buffers_.init();
 
+  this->indicate_transmission(false);
+  
 #ifdef USE_ESP32_FRAMEWORK_ARDUINO
   iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP32ArduinoUARTComponent *>(this->parent_));
 #endif
@@ -223,6 +225,7 @@ void DlmsCosemComponent::loop() {
   switch (this->state_) {
     case State::IDLE: {
       this->update_last_rx_time_();
+      this->indicate_transmission(false);
     } break;
 
     case State::WAIT:
@@ -234,6 +237,7 @@ void DlmsCosemComponent::loop() {
 
     case State::COMMS_TX: {
       this->log_state_();
+      this->indicate_transmission(true);
       if (buffers_.has_more_messages_to_send()) {
         send_dlms_messages_();
       } else {
@@ -247,11 +251,9 @@ void DlmsCosemComponent::loop() {
       if (this->check_rx_timeout_()) {
         ESP_LOGE(TAG, "RX timeout.");
         this->has_error = true;
-#ifdef USE_BINARY_SENSOR
-        if (this->connection_binary_sensor_) {
-          this->connection_binary_sensor_->publish_state(0);
-        }
-#endif
+
+        this->indicate_transmission(false);
+
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
         this->stats_.invalid_frames_ += reading_state_.err_invalid_frames;
         // if mission critical
@@ -299,10 +301,9 @@ void DlmsCosemComponent::loop() {
 
       if (buffers_.reply.complete == 0) {
         ESP_LOGD(TAG, "DLMS Reply not complete, need more HDLC frames. Continue reading.");
-        // buffers_.reply.complete = 1;
-        //  data in multiple frames.
-        //  never tested, always got complete reply so far
-        //  in theory we just keep reading until full reply is received.
+        // data in multiple frames.
+        // we just keep reading until full reply is received.
+
         return;
       }
 
@@ -509,11 +510,7 @@ void DlmsCosemComponent::update() {
     return;
   }
   ESP_LOGD(TAG, "Starting data collection");
-#ifdef USE_BINARY_SENSOR
-  if (this->connection_binary_sensor_) {
-    this->connection_binary_sensor_->publish_state(1);
-  }
-#endif
+  this->indicate_transmission(true);
   this->has_error = false;
   this->set_next_state_(State::OPEN_SESSION);
 }
@@ -741,6 +738,14 @@ int DlmsCosemComponent::set_sensor_value(DlmsCosemSensorBase *sensor, const char
     ESP_LOGD(TAG, "OBIS code: %s, result != DLMS_ERROR_CODE_OK = %d", obis, this->dlms_reading_state_.last_error);
   }
   return this->dlms_reading_state_.last_error;
+}
+
+void DlmsCosemComponent::indicate_transmission(bool transmission_on) {
+#ifdef USE_BINARY_SENSOR
+  if (this->transmission_binary_sensor_) {
+    this->transmission_binary_sensor_->publish_state(transmission_on);
+  }
+#endif
 }
 
 void DlmsCosemComponent::send_dlms_messages_() {

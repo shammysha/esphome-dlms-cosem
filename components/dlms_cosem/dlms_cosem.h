@@ -49,10 +49,10 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   float get_setup_priority() const override { return setup_priority::DATA; };
 
   void set_client_address(uint16_t addr) { this->client_address_ = addr; };
-  
+
   void set_server_address(uint16_t addr);
   uint16_t set_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
-  void  update_server_address(uint16_t addr);
+  void update_server_address(uint16_t addr);
   uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
 
   void set_auth_required(bool auth) { this->auth_required_ = auth; };
@@ -72,9 +72,8 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   bool has_error{true};
 
-
-#ifdef USE_BINARY_SENSOR  
-  SUB_BINARY_SENSOR(connection)
+#ifdef USE_BINARY_SENSOR
+  SUB_BINARY_SENSOR(transmission)
 #endif
 
  protected:
@@ -85,10 +84,10 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   uint32_t receive_timeout_ms_{500};
   uint32_t delay_between_requests_ms_{50};
-
+  
   GPIOPin *flow_control_pin_{nullptr};
   std::unique_ptr<DlmsCosemUart> iuart_;
-  
+
   SensorMap sensors_;
 
   sensor::Sensor *crc_errors_per_session_sensor_{};
@@ -135,13 +134,15 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void prepare_and_send_dlms_data_request(const char *obis, int type, bool reg_init = true);
   void prepare_and_send_dlms_release();
   void prepare_and_send_dlms_disconnect();
-  
+
   void send_dlms_req_and_next(DlmsRequestMaker maker, DlmsResponseParser parser, State next_state,
                               bool mission_critical = false, bool clear_buffer = true);
-  
-  
-int set_sensor_scale_and_unit(DlmsCosemSensor * sensor);
-int set_sensor_value(DlmsCosemSensorBase * sensor, const char * obis);
+
+  int set_sensor_scale_and_unit(DlmsCosemSensor *sensor);
+  int set_sensor_value(DlmsCosemSensorBase *sensor, const char *obis);
+
+
+  void indicate_transmission(bool transmission_on);
 
   // void read_reply_and_go_next_state_(ReadFunction read_fn, State next_state, uint8_t retries, bool mission_critical,
   //                                    bool check_crc);
@@ -192,7 +193,7 @@ int set_sensor_value(DlmsCosemSensorBase * sensor, const char * obis);
     void check_and_grow_input(uint16_t more_data);
     // next function shows whether there are still messages to send
     const bool has_more_messages_to_send() const { return out_msg_index < out_msg.size; }
-    
+
     gxRegister gx_register;
     unsigned char gx_attribute{2};
 
