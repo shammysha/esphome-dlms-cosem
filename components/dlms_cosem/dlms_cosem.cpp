@@ -192,6 +192,12 @@ void DlmsCosemComponent::dump_config() {
 }
 
 void DlmsCosemComponent::register_sensor(DlmsCosemSensorBase *sensor) {
+  #ifdef USE_TEXT_SENSOR
+    if (sensor->get_type() == SensorType::TEXT_SENSOR) {
+      auto text_sensor = static_cast<DlmsCosemTextSensor *>(sensor);
+      text_sensor->set_cp1251_conversion_required(this->cp1251_conversion_required_);
+    }
+  #endif
   this->sensors_.insert({sensor->get_obis_code(), sensor});
 }
 

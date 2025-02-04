@@ -36,6 +36,8 @@ CONF_ADDRESS_LENGTH = "address_length"
 CONF_DELAY_BETWEEN_REQUESTS = "delay_between_requests"
 CONF_DONT_PUBLISH = "dont_publish"
 CONF_CLASS = "class"
+CONF_CP1251 = "cp1251"
+
 
 CONF_REBOOT_AFTER_FAILURE = "reboot_after_failure"
 
@@ -98,6 +100,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_REBOOT_AFTER_FAILURE, default=0): cv.int_range(
                 min=0, max=100
             ),
+            cv.Optional(CONF_CP1251, default=True): cv.boolean,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -128,6 +131,7 @@ async def to_code(config):
     cg.add(var.set_delay_between_requests_ms(config[CONF_DELAY_BETWEEN_REQUESTS]))
     cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
     cg.add(var.set_reboot_after_failure(config[CONF_REBOOT_AFTER_FAILURE]))
+    cg.add(var.set_cp1251_conversion_required(config[CONF_CP1251]))
     
     cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c#platformio")
     # Its a hard-copy of this one, which is a 2-y.o. fork of official gurux repo + platformio json lib file

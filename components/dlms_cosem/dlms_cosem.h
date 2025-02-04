@@ -70,6 +70,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void register_sensor(DlmsCosemSensorBase *sensor);
 
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
+  void set_cp1251_conversion_required(bool required) { this->cp1251_conversion_required_ = required; }
 
   bool has_error{true};
 
@@ -86,6 +87,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   uint32_t receive_timeout_ms_{500};
   uint32_t delay_between_requests_ms_{50};
+  bool cp1251_conversion_required_{true};
   
   GPIOPin *flow_control_pin_{nullptr};
   std::unique_ptr<DlmsCosemUart> iuart_;
