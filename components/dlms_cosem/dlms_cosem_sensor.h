@@ -111,9 +111,10 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
   void publish() override { publish_state(value_); }
 
   bool has_got_scale_and_unit() override { return true; }
+  void set_cp1251_conversion_required(bool required) { this->cp1251_conversion_required_ = required; }
 
-  void set_value(const char *value) {
-    if (this->cp1251_conversion_required_) {
+  void set_value(const char *value, bool hub_cp1251_conversion_required) {
+    if (this->cp1251_conversion_required_.value_or(hub_cp1251_conversion_required)) {
       char res[std::strlen(value) * 3 + 1];
       cp1251_to_utf8(res, value);
       value_ = std::string(res);
@@ -123,8 +124,8 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
     has_value_ = true;
     tries_ = 0;
   }
-  bool cp1251_conversion_required_{false};
-  void set_cp1251_conversion_required(bool required) { this->cp1251_conversion_required_ = required; }
+
+  optional<bool> cp1251_conversion_required_{nullopt};
 
  protected:
   std::string value_;

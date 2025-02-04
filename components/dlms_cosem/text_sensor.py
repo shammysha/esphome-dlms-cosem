@@ -9,6 +9,7 @@ from . import (
     CONF_OBIS_CODE,
     CONF_DONT_PUBLISH,
     CONF_CLASS,
+    CONF_CP1251,
 )
 
 AUTO_LOAD = ["dlms_cosem"]
@@ -27,6 +28,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_OBIS_CODE): obis_code,
             cv.Optional(CONF_DONT_PUBLISH, default=False): cv.boolean,
             cv.Optional(CONF_CLASS, default=1): cv.int_,
+            cv.Optional(CONF_CP1251): cv.boolean,
         }
     ),
     cv.has_exactly_one_key(CONF_OBIS_CODE),
@@ -39,4 +41,8 @@ async def to_code(config):
     cg.add(var.set_obis_code(config[CONF_OBIS_CODE]))
     cg.add(var.set_dont_publish(config.get(CONF_DONT_PUBLISH)))
     cg.add(var.set_obis_class(config[CONF_CLASS]))
+
+    if conf := config.get(CONF_CP1251):
+        cg.add(var.set_cp1251_conversion_required(config[CONF_CP1251]))
+        
     cg.add(component.register_sensor(var))

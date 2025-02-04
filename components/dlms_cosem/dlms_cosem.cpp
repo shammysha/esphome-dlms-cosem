@@ -192,12 +192,6 @@ void DlmsCosemComponent::dump_config() {
 }
 
 void DlmsCosemComponent::register_sensor(DlmsCosemSensorBase *sensor) {
-  #ifdef USE_TEXT_SENSOR
-    if (sensor->get_type() == SensorType::TEXT_SENSOR) {
-      auto text_sensor = static_cast<DlmsCosemTextSensor *>(sensor);
-      text_sensor->set_cp1251_conversion_required(this->cp1251_conversion_required_);
-    }
-  #endif
   this->sensors_.insert({sensor->get_obis_code(), sensor});
 }
 
@@ -749,7 +743,7 @@ int DlmsCosemComponent::set_sensor_value(DlmsCosemSensorBase *sensor, const char
         auto type = sensor->get_obis_class();
 
         if (type == DLMS_OBJECT_TYPE_DATA) {
-          static_cast<DlmsCosemTextSensor *>(sensor)->set_value(reinterpret_cast<const char *>(arr->data));
+          static_cast<DlmsCosemTextSensor *>(sensor)->set_value(reinterpret_cast<const char *>(arr->data), this->cp1251_conversion_required_);
         } else if (type = DLMS_OBJECT_TYPE_CLOCK) {
           ESP_LOGD(TAG, "Clock sensor");
         }
