@@ -226,17 +226,18 @@ void DlmsCosemComponent::loop() {
     case State::IDLE: {
       this->update_last_rx_time_();
       this->indicate_transmission(false);
-      this->indicate_session(false);
     } break;
 
     case State::TRY_LOCK_BUS: {
       this->log_state_();
-      this->indicate_session(true);
       if (this->try_lock_uart_session_()) {
         this->set_next_state_(State::OPEN_SESSION);
+        this->indicate_session(true);
+
       } else {
         ESP_LOGV(TAG, "UART Bus is busy, waiting ...");
         this->set_next_state_delayed_(1000, State::TRY_LOCK_BUS);
+
       }
     } break;
 
@@ -264,6 +265,7 @@ void DlmsCosemComponent::loop() {
         ESP_LOGE(TAG, "RX timeout.");
         this->has_error = true;
 
+        this->indicate_session(false);
         this->indicate_transmission(false);
 
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
