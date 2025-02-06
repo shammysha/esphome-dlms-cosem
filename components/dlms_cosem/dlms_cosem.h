@@ -77,6 +77,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 #ifdef USE_BINARY_SENSOR
   SUB_BINARY_SENSOR(transmission)
   SUB_BINARY_SENSOR(session)
+  SUB_BINARY_SENSOR(connection)
 #endif
 
  protected:

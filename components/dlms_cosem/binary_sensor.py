@@ -16,9 +16,11 @@ AUTO_LOAD = ["dlms_cosem"]
 
 CONF_TRANSMISSION = "transmission"
 CONF_SESSION = "session"
+CONF_CONNECTION = "connection"
 
 ICON_TRANSMISSION = "mdi:swap-horizontal"
-ICON_SESSION = "mdi:lan-connect"
+ICON_CONNECTION = "mdi:lan-connect"
+ICON_SESSION = "mdi:sync"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -33,6 +35,11 @@ CONFIG_SCHEMA = cv.Schema(
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
             icon=ICON_SESSION,
         ),
+        cv.Optional(CONF_CONNECTION):  binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_CONNECTIVITY,
+            entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+            icon=ICON_CONNECTION,
+        ),        
     }
 )
 
@@ -46,3 +53,7 @@ async def to_code(config):
     if conf := config.get(CONF_SESSION):
         sensor = await binary_sensor.new_binary_sensor(config[CONF_SESSION])
         cg.add(hub.set_session_binary_sensor(sensor))
+        
+    if conf := config.get(CONF_CONNECTION):
+        sensor = await binary_sensor.new_binary_sensor(config[CONF_CONNECTION])
+        cg.add(hub.set_connection_binary_sensor(sensor))        
