@@ -166,12 +166,15 @@ text_sensor:
 
 binary_sensor: 
   - platform: dlms_cosem
+    connection:
+      name: Connection
     session:
       name: Session
     transmission: 
       name: Transmission
 
 ```
+**Connection** включается в случае доступности соединения с прибором. выключается в случае ошибки соединения.
 **Session** включается в начале сессии связи с прибором, отключается по окончанию.
 **Transmission** включается на период каждого отдельного запроса. можно подключить, например, к светодиоду для индикации активности
 
@@ -213,8 +216,8 @@ globals:
 
 binary_sensor: 
   - platform: dlms_cosem
-    session: 
-      name: Session
+    connection: 
+      name: Connection
       #.....
       on_release:
         - lambda: |-

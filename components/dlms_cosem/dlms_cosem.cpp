@@ -234,9 +234,12 @@ void DlmsCosemComponent::loop() {
       this->indicate_session(true);
       if (this->try_lock_uart_session_()) {
         this->set_next_state_(State::OPEN_SESSION);
+        this->indicate_connection(true);
+
       } else {
         ESP_LOGV(TAG, "UART Bus is busy, waiting ...");
         this->set_next_state_delayed_(1000, State::TRY_LOCK_BUS);
+
       }
     } break;
 
@@ -264,6 +267,7 @@ void DlmsCosemComponent::loop() {
         ESP_LOGE(TAG, "RX timeout.");
         this->has_error = true;
 
+        this->indicate_connection(false);
         this->indicate_transmission(false);
 
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
@@ -768,6 +772,14 @@ void DlmsCosemComponent::indicate_session(bool session_on) {
 #ifdef USE_BINARY_SENSOR
   if (this->session_binary_sensor_) {
     this->session_binary_sensor_->publish_state(session_on);
+  }
+#endif
+}
+
+void DlmsCosemComponent::indicate_connection(bool connection_on) {
+#ifdef USE_BINARY_SENSOR
+  if (this->connection_binary_sensor_) {
+    this->connection_binary_sensor_->publish_state(connection_on);
   }
 #endif
 }
