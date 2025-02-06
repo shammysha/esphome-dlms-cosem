@@ -267,7 +267,7 @@ void DlmsCosemComponent::loop() {
         ESP_LOGE(TAG, "RX timeout.");
         this->has_error = true;
 
-        this->indicate_conneciton(false);
+        this->indicate_connection(false);
         this->indicate_transmission(false);
 
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
