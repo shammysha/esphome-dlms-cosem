@@ -25,6 +25,8 @@
 #include <cosem.h>
 #include <converters.h>
 
+//#define IEC_HANDSHAKE
+
 namespace esphome {
 namespace dlms_cosem {
 
@@ -80,6 +82,10 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   SUB_BINARY_SENSOR(connection)
 #endif
 
+#ifdef USE_TEXT_SENSOR
+  SUB_TEXT_SENSOR(last_scan)
+#endif
+
  protected:
   uint16_t client_address_{16};
   uint16_t server_address_{1};
@@ -89,7 +95,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   uint32_t receive_timeout_ms_{500};
   uint32_t delay_between_requests_ms_{50};
   bool cp1251_conversion_required_{true};
-  
+
   GPIOPin *flow_control_pin_{nullptr};
   std::unique_ptr<DlmsCosemUart> iuart_;
 
@@ -104,6 +110,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
     WAIT,
     COMMS_TX,
     COMMS_RX,
+    MISSION_FAILED,
     //    WAITING_FOR_RESPONSE,
     OPEN_SESSION,
     BUFFERS_REQ,
@@ -129,6 +136,8 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
     State next_state{State::IDLE};
   } wait_;
 
+  enum class OperationMode { NORMAL = 0, SCANNING } operation_mode_{OperationMode::NORMAL};
+
   bool is_idling() const { return this->state_ == State::WAIT || this->state_ == State::IDLE; };
 
   void set_next_state_(State next_state) { state_ = next_state; };
@@ -151,7 +160,6 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void indicate_transmission(bool transmission_on);
   void indicate_session(bool session_on);
   void indicate_connection(bool connection_on);
-
 
   // void read_reply_and_go_next_state_(ReadFunction read_fn, State next_state, uint8_t retries, bool mission_critical,
   //                                    bool check_crc);
@@ -186,19 +194,14 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
     uint32_t session_started_ms{0};             // start of session
     SensorMap::iterator request_iter{nullptr};  // talking to meter
     SensorMap::iterator sensor_iter{nullptr};   // publishing sensor values
+
   } loop_state_;
 
   struct InOutBuffers {
-    //    uint8_t out[MAX_OUT_BUF_SIZE];
-    //    size_t amount_out;
-
     message out_msg;
     uint16_t out_msg_index{0};
     uint16_t out_msg_data_pos{0};
-
-    // uint8_t in[MAX_IN_BUF_SIZE];
     gxByteBuffer in;
-    // size_t amount_in;
     size_t in_position;
 
     gxReplyData reply;
@@ -222,18 +225,10 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_baud_rate_(uint32_t baud_rate);
   bool are_baud_rates_different_() const { return baud_rate_handshake_ != baud_rate_; }
 
-  // uint16_t calculate_crc_hdlc_frame_(uint8_t *data, size_t length, bool set_crc = false);
-  // bool check_crc_hdlc_frame_(uint8_t *data, size_t length);
-
-  // void prepare_frame_(const uint8_t *data, size_t length);
-
-  // void send_frame_(const uint8_t *data, size_t length);
-  // void send_frame_prepared_();
-
   void send_dlms_messages_();
 
   size_t receive_frame_(FrameStopFunction stop_fn);
-  // size_t receive_frame_ascii_();
+  size_t receive_frame_ascii_();
   size_t receive_frame_hdlc_();
 
   inline void update_last_rx_time_() { this->last_rx_time_ = millis(); }
@@ -241,9 +236,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   bool check_rx_timeout_() { return millis() - this->last_rx_time_ >= receive_timeout_ms_; }
 
   char *extract_meter_id_(size_t frame_size);
-  //  uint8_t get_values_from_brackets_(char *line, ValueRefsArray &vals);
   char *get_nth_value_from_csv_(char *line, uint8_t idx);
-  //  bool set_sensor_value_(DlmsCosemSensorBase *sensor, ValueRefsArray &vals);
 
   void report_failure(bool failure);
   void abort_mission_();
