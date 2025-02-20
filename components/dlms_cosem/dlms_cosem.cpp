@@ -32,6 +32,7 @@ static constexpr uint8_t BOOT_WAIT_S = 15;  // 10;
 
 static char empty_str[] = "";
 
+/*
 static char format_hex_char(uint8_t v) { return v >= 10 ? 'A' + (v - 10) : '0' + v; }
 
 static std::string format_frame_pretty(const uint8_t *data, size_t length) {
@@ -106,6 +107,7 @@ uint8_t baud_rate_to_byte(uint32_t baud) {
   }
   return idx + '0';
 }
+*/
 
 void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
   ESP_LOGV(TAG, "Setting baud rate %u bps", baud_rate);
@@ -150,7 +152,7 @@ void DlmsCosemComponent::setup() {
   this->buffers_.init();
 
   this->indicate_transmission(false);
-  
+
 #ifdef USE_ESP32_FRAMEWORK_ARDUINO
   iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP32ArduinoUARTComponent *>(this->parent_));
 #endif
@@ -198,10 +200,7 @@ void DlmsCosemComponent::register_sensor(DlmsCosemSensorBase *sensor) {
 void DlmsCosemComponent::abort_mission_() {
   // try close connection ?
   ESP_LOGE(TAG, "Abort mission. Closing session");
-  //  this->send_frame_(CMD_CLOSE_SESSION, sizeof(CMD_CLOSE_SESSION));
-  this->unlock_uart_session_();
-  this->set_next_state_(State::IDLE);
-  this->report_failure(true);
+  this->set_next_state_(State::MISSION_FAILED);
 }
 
 void DlmsCosemComponent::report_failure(bool failure) {
@@ -231,8 +230,8 @@ void DlmsCosemComponent::loop() {
 
     case State::TRY_LOCK_BUS: {
       this->log_state_();
-      this->indicate_session(true);
       if (this->try_lock_uart_session_()) {
+        this->indicate_session(true);
         this->set_next_state_(State::OPEN_SESSION);
         this->indicate_connection(true);
 
@@ -320,15 +319,12 @@ void DlmsCosemComponent::loop() {
         ESP_LOGD(TAG, "DLMS Reply not complete, need more HDLC frames. Continue reading.");
         // data in multiple frames.
         // we just keep reading until full reply is received.
-
-        return;
+        return; //keep reading
       }
 
-      // if buffers_.reply.complete != 0
       this->update_last_rx_time_();
       this->set_next_state_(reading_state_.next_state);
 
-      // current_rr_->parse(&buffers_.reply);
       auto parse_ret = this->dlms_reading_state_.parser_fn();
       this->dlms_reading_state_.last_error = parse_ret;
 
@@ -336,9 +332,23 @@ void DlmsCosemComponent::loop() {
         //        ESP_LOGD(TAG, "DLSM parser fn result == DLMS_ERROR_CODE_OK");
 
       } else {
-        ESP_LOGE(TAG, "DLSM parser fn error %d %s", this->dlms_error_to_string(parse_ret));
-        set_next_state_(State::IDLE);
+        ESP_LOGE(TAG, "DLMS parser fn error %d %s", this->dlms_error_to_string(parse_ret));
+
+        // if not - just move forward
+        if (reading_state_.mission_critical) {
+          this->abort_mission_();
+        }
+        // if not critical - just move forward
+        // set_next_state_(State::IDLE);
       }
+    } break;
+
+    case State::MISSION_FAILED: {
+      //  this->send_frame_(CMD_CLOSE_SESSION, sizeof(CMD_CLOSE_SESSION));
+      this->unlock_uart_session_();
+      this->set_next_state_(State::IDLE);
+      this->report_failure(true);
+      this->stats_dump();
     } break;
 
     case State::OPEN_SESSION: {
@@ -385,7 +395,6 @@ void DlmsCosemComponent::loop() {
     case State::BUFFERS_REQ: {
       this->log_state_();
       this->prepare_and_send_dlms_buffers();
-      // this->start_comms_and_next(&buffers_rr_, State::BUFFERS_RCV);
 
     } break;
 
@@ -511,7 +520,7 @@ void DlmsCosemComponent::loop() {
           this->crc_errors_per_session_sensor_->publish_state(this->stats_.crc_errors_per_session());
         }
         this->report_failure(false);
-        this->unlock_uart_session_(); 
+        this->unlock_uart_session_();
         this->set_next_state_(State::IDLE);
         ESP_LOGD(TAG, "Total time: %u ms", millis() - this->loop_state_.session_started_ms);
       }
@@ -583,7 +592,7 @@ void DlmsCosemComponent::prepare_and_send_dlms_buffers() {
     return cl_snrmRequest(&this->dlms_settings_, &this->buffers_.out_msg);
   };
   auto parse = [this]() { return cl_parseUAResponse(&this->dlms_settings_, &this->buffers_.reply.data); };
-  this->send_dlms_req_and_next(make, parse, State::BUFFERS_RCV);
+  this->send_dlms_req_and_next(make, parse, State::BUFFERS_RCV, true);
 }
 
 void DlmsCosemComponent::prepare_and_send_dlms_aarq() {
@@ -747,8 +756,9 @@ int DlmsCosemComponent::set_sensor_value(DlmsCosemSensorBase *sensor, const char
         auto type = sensor->get_obis_class();
 
         if (type == DLMS_OBJECT_TYPE_DATA) {
-          static_cast<DlmsCosemTextSensor *>(sensor)->set_value(reinterpret_cast<const char *>(arr->data), this->cp1251_conversion_required_);
-        } else if (type = DLMS_OBJECT_TYPE_CLOCK) {
+          static_cast<DlmsCosemTextSensor *>(sensor)->set_value(reinterpret_cast<const char *>(arr->data),
+                                                                this->cp1251_conversion_required_);
+        } else if (type == DLMS_OBJECT_TYPE_CLOCK) {
           ESP_LOGD(TAG, "Clock sensor");
         }
       }
@@ -865,18 +875,20 @@ size_t DlmsCosemComponent::receive_frame_hdlc_() {
   return receive_frame_(frame_end_check_hdlc);
 }
 
-// size_t DlmsCosemComponent::receive_frame_ascii_() {
-//   // "data<CR><LF>"
-//   ESP_LOGVV(TAG, "Waiting for ASCII frame");
-//   auto frame_end_check_crlf = [](uint8_t *b, size_t s) {
-//     auto ret = s >= 2 && b[s - 1] == '\n' && b[s - 2] == '\r';
-//     if (ret) {
-//       ESP_LOGVV(TAG, "Frame CRLF Stop");
-//     }
-//     return ret;
-//   };
-//   return receive_frame_(frame_end_check_crlf);
-// }
+#ifdef IEC_HANDSHAKE
+size_t DlmsCosemComponent::receive_frame_ascii_() {
+  // "data<CR><LF>"
+  ESP_LOGVV(TAG, "Waiting for ASCII frame");
+  auto frame_end_check_crlf = [](uint8_t *b, size_t s) {
+    auto ret = s >= 2 && b[s - 1] == '\n' && b[s - 2] == '\r';
+    if (ret) {
+      ESP_LOGVV(TAG, "Frame CRLF Stop");
+    }
+    return ret;
+  };
+  return receive_frame_(frame_end_check_crlf);
+}
+#endif
 
 void DlmsCosemComponent::clear_rx_buffers_() {
   int available = this->available();
@@ -908,6 +920,8 @@ const char *DlmsCosemComponent::state_to_string(State state) {
       return "COMMS_TX";
     case State::COMMS_RX:
       return "COMMS_RX";
+    case State::MISSION_FAILED:
+      return "MISSION_FAILED";
     case State::OPEN_SESSION:
       return "OPEN_SESSION";
     case State::BUFFERS_REQ:
