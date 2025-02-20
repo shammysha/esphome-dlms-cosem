@@ -340,7 +340,7 @@ sensor:
 
 Пример файла конфигурации, протестированого на Энергомера CE207-SPds.
 
-```
+```yaml
 esphome:
   name: energomera-ce207-spds
   friendly_name: Energomera-ce207-spds
