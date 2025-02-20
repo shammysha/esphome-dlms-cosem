@@ -79,6 +79,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 #ifdef USE_BINARY_SENSOR
   SUB_BINARY_SENSOR(transmission)
   SUB_BINARY_SENSOR(session)
+  SUB_BINARY_SENSOR(connection)
 #endif
 
 #ifdef USE_TEXT_SENSOR
@@ -158,6 +159,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   void indicate_transmission(bool transmission_on);
   void indicate_session(bool session_on);
+  void indicate_connection(bool connection_on);
 
   // void read_reply_and_go_next_state_(ReadFunction read_fn, State next_state, uint8_t retries, bool mission_critical,
   //                                    bool check_crc);
