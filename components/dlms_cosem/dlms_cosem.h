@@ -51,10 +51,17 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
 
   void set_client_address(uint16_t addr) { this->client_address_ = addr; };
 
-  void set_server_address(uint16_t addr);
-  uint16_t set_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
-  void update_server_address(uint16_t addr);
-  uint16_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+  void set_server_address(uint32_t addr);
+
+  uint32_t set_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+
+  void update_server_address(uint32_t addr);
+  uint32_t update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+
+  uint32_t get_server_address() { return this->server_address_; }
+  uint16_t get_logical_device() { return this->device_addr_.logical; }
+  uint16_t get_physical_device() { return this->device_addr_.physical; }
+  unsigned char get_address_length() { return this->device_addr_.size; }
 
   void set_auth_required(bool auth) { this->auth_required_ = auth; };
   void set_password(const std::string &addr) { this->password_ = addr; };
@@ -72,6 +79,10 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_reboot_after_failure(uint16_t number_of_failures) { this->failures_before_reboot_ = number_of_failures; }
   void set_cp1251_conversion_required(bool required) { this->cp1251_conversion_required_ = required; }
 
+  void start_scan(uint16_t addr);
+  void start_scan(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize);
+  void stop_scan();
+
   bool has_error{true};
 
 #ifdef USE_BINARY_SENSOR
@@ -80,15 +91,37 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   SUB_BINARY_SENSOR(connection)
 #endif
 
+#ifdef USE_SWITCH
+  SUB_SWITCH(scan)
+#endif
+
+#ifdef USE_NUMBER
+  SUB_NUMBER(logical_device)
+  SUB_NUMBER(physical_device)
+#endif
+
+#ifdef USE_SELECT
+  SUB_SELECT(address_length)
+#endif
+
+
  protected:
   uint16_t client_address_{16};
-  uint16_t server_address_{1};
+  uint32_t server_address_{1};
+
+  struct {
+    uint16_t logical{1};
+    uint16_t physical{1};
+    unsigned char size{2};
+  } device_addr_;
+
   bool auth_required_{false};
   std::string password_{""};
 
   uint32_t receive_timeout_ms_{500};
   uint32_t delay_between_requests_ms_{50};
   bool cp1251_conversion_required_{true};
+  bool scan_mode_{false};
   
   GPIOPin *flow_control_pin_{nullptr};
   std::unique_ptr<DlmsCosemUart> iuart_;
@@ -152,6 +185,8 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void indicate_session(bool session_on);
   void indicate_connection(bool connection_on);
 
+  device_addr_ parse_server_address(uint32_t addr);
+  void scan_cycle();
 
   // void read_reply_and_go_next_state_(ReadFunction read_fn, State next_state, uint8_t retries, bool mission_critical,
   //                                    bool check_crc);

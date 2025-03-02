@@ -112,32 +112,134 @@ void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
   iuart_->update_baudrate(baud_rate);
 }
 
-void DlmsCosemComponent::set_server_address(uint16_t address) { this->server_address_ = address; };
+void DlmsCosemComponent::set_server_address(uint32_t address) {
+  this->server_address_ = address;
+  this->parse_server_address(address);
+}
 
-uint16_t DlmsCosemComponent::set_server_address(uint16_t logicalAddress, uint16_t physicalAddress,
-                                                unsigned char addressSize) {
+uint32_t DlmsCosemComponent::set_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
+  this->device_addr_.logical = logicalAddress;
+  this->device_addr_.physical = physicalAddress;
+  this->device_addr_.size = addressSize;
+
   this->server_address_ = cl_getServerAddress(logicalAddress, physicalAddress, addressSize);
 
   ESP_LOGD(TAG, "Server address = %d (based on logical_address=%d, physical_address=%d, address_size=%d)",
            this->server_address_, logicalAddress, physicalAddress, addressSize);
+
+#ifdef USE_NUMBER
+  if (this->logical_device_number_) {
+    this->logical_device_number_->publish_state(logicalAddress);
+  }
+  if (this->physical_device_number_) {
+    this->physical_device_number_->publish_state(physicalAddress);
+  }
+#endif
+
+#ifdef USE_SELECT
+  if (this->address_length_select_) {
+    this->address_length_select_->publish_state(addressSize);
+  }
+#endif
+
   return this->server_address_;
 }
 
-void DlmsCosemComponent::update_server_address(uint16_t addr) {
-  this->server_address_ = addr;
+void DlmsCosemComponent::update_server_address(uint32_t addr) {
+  this->set_server_address(addr);
+  this->settings_reload();
+}
+
+uint32_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
+  this->set_server_address(logicalAddress, physicalAddress, addressSize);
+  this->settings_reload();
+
+  return this->server_address_;
+}
+
+void DlmsCosemComponent::parse_server_address(uint32_t addr) {
+  if (addr <= 0x4000) {
+    this->device_addr_.logical = addr >> 7;
+    this->device_addr_.physical = addr & 0x7F;
+    this->device_addr_.size = (this->device_addr_.logical == 0 ? 1 : 2);
+  } else {
+    this->device_addr_.logical = addr >> 14;
+    this->device_addr_.physical = addr & 0x3FFF;
+    this->device_addr_.size = 4;
+  }
+}
+
+void DlmsCosemComponent::scan_start(uint16_t addr) {
+  this->scan_mode = true;
+  this->update_server_address(t_addr);
+
+#ifdef USE_SWITCH
+  if (this->scan_switch_) {
+    this->scan_switch_->publish_state(true);
+  }
+#endif
+}
+
+void DlmsCosemComponent::scan_start(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
+  this->scan_mode = true;
+  this->update_server_address(logicalAddress, physicalAddress, addressSize);
+
+#ifdef USE_SWITCH
+  if (this->scan_switch_) {
+    this->scan_switch_->publish_state(true);
+  }
+#endif
+}
+
+void DlmsCosemComponent::scan_stop() {
+  this->scan_mode = false;
+
+#ifdef USE_SWITCH
+  if (this->scan_switch_) {
+    this->scan_switch_->publish_state(false);
+  }
+#endif
+}
+
+void DlmsCosemComponent::scan_cycle() {
+  if (int(this->device_addr_.size) < 4) {
+
+    if (this->device_addr_.logical >= 255) {
+      this->device_addr_.size = 4;
+      this->device_addr_.logical = 1;
+      this->device_addr_.physical = 1;
+
+    } else if (this->device_addr_.physical >= 255) {
+      this->device_addr_.logical++;
+      this->device_addr_.physical = 1;
+
+    } else {
+      this->device_addr_.physical++;
+    }
+
+  } else if (this->device_addr_.logical >= 255) {
+    this->scan_stop();
+
+  } else if (this->device_addr_.physical >= 255) {
+    this->device_addr_.logical++;
+    this->device_addr_.physical = 1;
+
+  } else {
+    this->device_addr_.physical++;
+  }
+
+  this->update_server_address(this->device_addr_.logical, this->device_addr_.physical, this->device_addr_.size);
+}
+
+void DlmsCosemComponent::settings_reload() {
   cl_clear(&dlms_settings_);
-  cl_init(&dlms_settings_, true, this->client_address_, this->server_address_,
-          this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
-          this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC);
+  cl_init(
+      &dlms_settings_, true, this->client_address_, this->server_address_,
+      this->auth_required_ ? DLMS_AUTHENTICATION_LOW : DLMS_AUTHENTICATION_NONE,
+      this->auth_required_ ? this->password_.c_str() : NULL, DLMS_INTERFACE_TYPE_HDLC
+  );
 
   this->update();
-}
-
-uint16_t DlmsCosemComponent::update_server_address(uint16_t logicalAddress, uint16_t physicalAddress,
-                                                   unsigned char addressSize) {
-  this->set_server_address(logicalAddress, physicalAddress, addressSize);
-  this->update_server_address(this->server_address_);
-  return this->server_address_;
 }
 
 void DlmsCosemComponent::setup() {
@@ -270,6 +372,10 @@ void DlmsCosemComponent::loop() {
         this->indicate_connection(false);
         this->indicate_transmission(false);
 
+        if (this->scan_mode) {
+          this->scan_cycle();
+        }
+
         this->dlms_reading_state_.last_error = DLMS_ERROR_CODE_HARDWARE_FAULT;
         this->stats_.invalid_frames_ += reading_state_.err_invalid_frames;
         // if mission critical
@@ -282,6 +388,10 @@ void DlmsCosemComponent::loop() {
           this->set_next_state_(reading_state_.next_state);
         }
         return;
+      }
+
+      if (this->scan_mode) {
+        this->scan_stop();
       }
 
       // the folowing basic algorithm to be implemented to read DLMS packet

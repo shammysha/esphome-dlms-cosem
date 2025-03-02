@@ -48,6 +48,10 @@ DlmsCosem = dlms_cosem_ns.class_(
     "DlmsCosemComponent", cg.Component, uart.UARTDevice
 )
 
+# Actions
+DlmsCosemScanStartAction = dlms_cosem_ns.class_("DlmsCosemScanStartAction", automation.Action)
+DlmsCosemScanStopAction = dlms_cosem_ns.class_("DlmsCosemScanStopAction", automation.Action)
+
 BAUD_RATES = [300, 600, 1200, 2400, 4800, 9600, 19200]
 ADDRESS_LENGTH_ENUM = [1, 2, 4]
 
@@ -107,6 +111,8 @@ CONFIG_SCHEMA = cv.All(
     .extend(uart.UART_DEVICE_SCHEMA)
 )
 
+
+
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -136,3 +142,49 @@ async def to_code(config):
     cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c#platformio")
     # Its a hard-copy of this one, which is a 2-y.o. fork of official gurux repo + platformio json lib file
     # cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
+
+@automation.register_action(
+    "dlms_cosem.scan_start",
+    DlmsCosemScanStartAction,
+    maybe_simple_id({
+        cv.GenerateID(): cv.use_id(DlmsCosem),
+        cv.Required(CONF_SERVER_ADDRESS, default=1): cv.Any(
+            cv.templatable(cv.positive_int),
+            cv.Schema({
+                cv.Optional(CONF_LOGICAL_DEVICE, default=1): cv.templatable(cv.positive_int),
+                cv.Required(CONF_PHYSICAL_DEVICE): cv.templatable(cv.positive_int),
+                cv.Optional(CONF_ADDRESS_LENGTH, default=2): cv.templatable(cv.one_of(1, 2, 4)),
+            })
+        ),        
+    }),
+)
+
+@automation.register_action(
+    "dlms_cosem.scan_stop",
+    DlmsCosemScanStopAction,
+    maybe_simple_id({ cv.GenerateID(): cv.use_id(DlmsCosem) })
+)
+
+async def dlms_cosem_scan_start_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    await cg.register_parented(var, config[CONF_ID])
+        
+    server_address = config[CONF_SERVER_ADDRESS]
+    if isinstance(config[CONF_SERVER_ADDRESS], int): 
+        t_addr_ = await cg.templatable(config[CONF_SERVER_ADDRESS], args, int)
+        cg.add(var.set_server_address(t_addr_))
+    else:
+        t_log_ = await cg.templatable(config[CONF_LOGICAL_DEVICE], args, int)
+        cg.add(var.set_logical_device(t_log_))        
+        t_phy_ = await cg.templatable(config[CONF_PHYSICAL_DEVICE], args, int)
+        cg.add(var.set_physical_device(t_phy_))        
+        t_len_ = await cg.templatable(config[CONF_ADDRESS_LENGTH], args, int)
+        cg.add(var.set_address_length(t_len_))        
+
+    return var    
+
+async def dlms_cosem_scan_stop_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    await cg.register_parented(var, config[CONF_ID])
+
+    return var 
