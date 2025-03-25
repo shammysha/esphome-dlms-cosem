@@ -32,6 +32,7 @@ async def to_code(config):
     hub = await cg.get_variable(config[CONF_DLMS_COSEM_ID])
 
     if conf := config.get(CONF_SCAN):
-        switch = await switch.switch(config[CONF_SCAN])
-        cg.add(hub.set_scan_switch(switch))
+        n = await switch.switch(config[CONF_SCAN])
+        await cg.register_parented(n, config[CONF_DLMS_COSEM_ID])
+        cg.add(hub.set_scan_switch(n))
         

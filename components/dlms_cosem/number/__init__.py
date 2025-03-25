@@ -46,7 +46,9 @@ async def to_code(config):
     
     if conf := config.get(CONF_LOGICAL_DEVICE):
         n = await number.new_number(conf, min_value=1, max_value=255, step=1)
+        await cg.register_parented(n, config[CONF_DLMS_COSEM_ID])
         cg.add(hub.set_logical_device_number(n))
     if conf := config.get(CONF_PHYSICAL_DEVICE):
         n = await number.new_number(conf, min_value=1, max_value=255, step=1)
+        await cg.register_parented(n, config[CONF_DLMS_COSEM_ID])
         cg.add(hub.set_physical_device_number(n))        

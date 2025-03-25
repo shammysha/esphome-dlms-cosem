@@ -129,16 +129,16 @@ uint32_t DlmsCosemComponent::set_server_address(uint16_t logicalAddress, uint16_
 
 #ifdef USE_NUMBER
   if (this->logical_device_number_) {
-    this->logical_device_number_->publish_state(logicalAddress);
+    this->logical_device_number_->make_call()->set_value((float) logicalAddress);
   }
   if (this->physical_device_number_) {
-    this->physical_device_number_->publish_state(physicalAddress);
+    this->physical_device_number_->make_call()->set_value((float) physicalAddress);
   }
 #endif
 
 #ifdef USE_SELECT
   if (this->address_length_select_) {
-    this->address_length_select_->publish_state(addressSize);
+    this->address_length_select_->make_call()->set_option(std::to_string(addressSize));
   }
 #endif
 
@@ -178,6 +178,15 @@ void DlmsCosemComponent::scan_start(uint16_t addr) {
     this->scan_switch_->publish_state(true);
   }
 #endif
+
+#ifdef USE_NUMBER
+  if (this->logical_device_number_) {
+    this->logical_device_number_->set_restore_value(false);
+  }
+  if (this->physical_device_number_) {
+    this->physical_device_number_->set_restore_value(false);
+  }
+#endif
 }
 
 void DlmsCosemComponent::scan_start(uint16_t logicalAddress, uint16_t physicalAddress, unsigned char addressSize) {
@@ -197,6 +206,15 @@ void DlmsCosemComponent::scan_stop() {
 #ifdef USE_SWITCH
   if (this->scan_switch_) {
     this->scan_switch_->publish_state(false);
+  }
+#endif
+
+#ifdef USE_NUMBER
+  if (this->logical_device_number_) {
+    this->logical_device_number_->set_restore_value(true);
+  }
+  if (this->physical_device_number_) {
+    this->physical_device_number_->set_restore_value(true);
   }
 #endif
 }

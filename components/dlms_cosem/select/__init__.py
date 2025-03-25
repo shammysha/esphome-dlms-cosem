@@ -37,4 +37,5 @@ async def to_code(config):
     
     if conf := config.get(CONF_ADDRESS_LENGTH):
         n = await select.new_select(conf, options=["1","2","4"])
+        await cg.register_parented(n, config[CONF_DLMS_COSEM_ID])
         cg.add(hub.set_address_length_select(n))
