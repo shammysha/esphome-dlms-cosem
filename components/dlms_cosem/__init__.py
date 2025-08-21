@@ -135,4 +135,4 @@ async def to_code(config):
     
     cg.add_library("GuruxDLMS", None, "https://github.com/latonita/GuruxDLMS.c#platformio")
     # Its a hard-copy of this one, which is a 2-y.o. fork of official gurux repo + platformio json lib file
-    # cg.add_library("GuruxDLMS", None, "https://github.com/viric/GuruxDLMS.c#platformio")
+    # cg.add_library("GuruxDLMS", None, "https://github.com/shammysha/GuruxDLMS.c#platformio")
