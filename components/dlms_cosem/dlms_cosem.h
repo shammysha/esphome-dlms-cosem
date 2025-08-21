@@ -210,7 +210,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
     void reset();
     void check_and_grow_input(uint16_t more_data);
     // next function shows whether there are still messages to send
-    const bool has_more_messages_to_send() const { return out_msg_index < out_msg.size; }
+    bool has_more_messages_to_send() const { return out_msg_index < out_msg.size; }
 
     gxRegister gx_register;
     unsigned char gx_attribute{2};

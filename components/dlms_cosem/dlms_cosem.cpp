@@ -238,7 +238,6 @@ void DlmsCosemComponent::loop() {
       } else {
         ESP_LOGV(TAG, "UART Bus is busy, waiting ...");
         this->set_next_state_delayed_(1000, State::TRY_LOCK_BUS);
-
       }
     } break;
 
@@ -319,7 +318,7 @@ void DlmsCosemComponent::loop() {
         ESP_LOGD(TAG, "DLMS Reply not complete, need more HDLC frames. Continue reading.");
         // data in multiple frames.
         // we just keep reading until full reply is received.
-        return; //keep reading
+        return;  // keep reading
       }
 
       this->update_last_rx_time_();
@@ -332,7 +331,7 @@ void DlmsCosemComponent::loop() {
         //        ESP_LOGD(TAG, "DLSM parser fn result == DLMS_ERROR_CODE_OK");
 
       } else {
-        ESP_LOGE(TAG, "DLMS parser fn error %d %s", this->dlms_error_to_string(parse_ret));
+        ESP_LOGE(TAG, "DLMS parser fn error %d %s", parse_ret, this->dlms_error_to_string(parse_ret));
 
         // if not - just move forward
         if (reading_state_.mission_critical) {
@@ -476,7 +475,7 @@ void DlmsCosemComponent::loop() {
 
     } break;
 
-    case State::DATA_NEXT:
+    case State::DATA_NEXT: {
       this->log_state_();
       this->loop_state_.request_iter = this->sensors_.upper_bound(this->loop_state_.request_iter->first);
       if (this->loop_state_.request_iter != this->sensors_.end()) {
@@ -484,9 +483,9 @@ void DlmsCosemComponent::loop() {
       } else {
         this->set_next_state_delayed_(this->delay_between_requests_ms_, State::SESSION_RELEASE);
       }
-      break;
+    } break;
 
-    case State::SESSION_RELEASE:
+    case State::SESSION_RELEASE: {
       this->loop_state_.sensor_iter = this->sensors_.begin();
 
       this->log_state_();
@@ -494,17 +493,18 @@ void DlmsCosemComponent::loop() {
       if (this->auth_required_) {
         this->prepare_and_send_dlms_release();
         break;
+      } else {
+        this->set_next_state_(State::DISCONNECT_REQ);
       }
-      // slip to next state if no auth required
-      // no break;
+    } break;
 
-    case State::DISCONNECT_REQ:
+    case State::DISCONNECT_REQ: {
       this->log_state_();
       ESP_LOGD(TAG, "Disconnect request");
       this->prepare_and_send_dlms_disconnect();
-      break;
+    } break;
 
-    case State::PUBLISH:
+    case State::PUBLISH: {
       this->log_state_();
       ESP_LOGD(TAG, "Publishing data");
       this->update_last_rx_time_();
@@ -524,7 +524,7 @@ void DlmsCosemComponent::loop() {
         this->set_next_state_(State::IDLE);
         ESP_LOGD(TAG, "Total time: %u ms", millis() - this->loop_state_.session_started_ms);
       }
-      break;
+    } break;
 
     default:
       break;
