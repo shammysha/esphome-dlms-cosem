@@ -24,7 +24,6 @@
 #include <client.h>
 #include <cosem.h>
 #include <converters.h>
-#include <serverevents.h>
 
 //#define IEC_HANDSHAKE
 
