@@ -20,7 +20,14 @@
 
 //##include "gxignore-arduino.h"
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
 #define DLMS_IGNORE_SERVER
+#ifdef  __cplusplus
+}
+#endif
+
 
 #include <dlmssettings.h>
 #include <client.h>
