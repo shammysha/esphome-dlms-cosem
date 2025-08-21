@@ -12,6 +12,7 @@ namespace dlms_cosem {
 static const char *TAG0 = "dlms_cosem_";
 
 #define TAG (this->tag_.c_str())
+#define DLMS_IGNORE_SERVER
 
 static constexpr uint8_t SOH = 0x01;
 static constexpr uint8_t STX = 0x02;
