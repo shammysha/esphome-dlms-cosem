@@ -20,6 +20,8 @@
 
 //##include "gxignore-arduino.h"
 
+#define DLMS_IGNORE_SERVER=1
+
 #include <dlmssettings.h>
 #include <client.h>
 #include <cosem.h>
