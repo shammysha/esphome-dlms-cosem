@@ -77,7 +77,7 @@ class DlmsCosemSensor : public DlmsCosemSensorBase, public sensor::Sensor {
   }
 
   void log_scale_and_unit() {
-    ESP_LOGW("dlms_cosem_sensor", "name: %s, obis: %s, unit: %d (%s), scaler pow: %d, scale_f: %f",
+    ESP_LOGV("dlms_cosem_sensor", "name: %s, obis: %s, unit: %d (%s), scaler pow: %d, scale_f: %f",
              this->get_sensor_name().c_str(), this->get_obis_code().c_str(), this->unit_, unit_s_, scaler_, scale_f_);
   }
 

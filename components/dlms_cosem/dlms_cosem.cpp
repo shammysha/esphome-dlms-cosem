@@ -1002,13 +1002,9 @@ int DlmsCosemComponent::set_sensor_value(DlmsCosemSensorBase *sensor, const char
         auto var = &this->buffers_.gx_register.value;
         auto scale = static_cast<DlmsCosemSensor *>(sensor)->get_scale();
         auto unit = static_cast<DlmsCosemSensor *>(sensor)->get_unit();
-        if (vt == DLMS_DATA_TYPE_FLOAT32 || vt == DLMS_DATA_TYPE_FLOAT64) {
-          float val = var_toDouble(var);
+        if (vt != DLMS_DATA_TYPE_NONE && vt != DLMS_DATA_TYPE_OCTET_STRING) {
+          float val = static_cast<float>(var_toDouble(var));
           ESP_LOGD(TAG, "OBIS code: %s, Value: %f, Scale: %f, Unit: %s", obis, val, scale, unit);
-          static_cast<DlmsCosemSensor *>(sensor)->set_value(val);
-        } else {
-          int val = var_toInteger(var);
-          ESP_LOGD(TAG, "OBIS code: %s, Value: %d, Scale: %f, Unit: %s", obis, val, scale, unit);
           static_cast<DlmsCosemSensor *>(sensor)->set_value(val);
         }
       } else {
