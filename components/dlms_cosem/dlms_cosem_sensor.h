@@ -108,18 +108,29 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
   SensorType get_type() const override { return TEXT_SENSOR; }
   const StringRef &get_sensor_name() { return this->get_name(); }
   EntityBase *get_base() { return this; }
-  void publish() override { publish_state(value_); }
+  void publish() override {
+    if (!this->pending_publish_) {
+      return;
+    }
+    publish_state(value_);
+    this->pending_publish_ = false;
+  }
 
   bool has_got_scale_and_unit() override { return true; }
   void set_cp1251_conversion_required(bool required) { this->cp1251_conversion_required_ = required; }
 
   void set_value(const char *value, bool hub_cp1251_conversion_required) {
+    std::string new_value;
     if (this->cp1251_conversion_required_.value_or(hub_cp1251_conversion_required)) {
       char res[std::strlen(value) * 3 + 1];
       cp1251_to_utf8(res, value);
-      value_ = std::string(res);
+      new_value = std::string(res);
     } else {
-      value_ = std::string(value);
+      new_value = std::string(value);
+    }
+    if (!this->has_value_ || this->value_ != new_value) {
+      this->value_ = std::move(new_value);
+      this->pending_publish_ = true;
     }
     has_value_ = true;
     tries_ = 0;
@@ -129,6 +140,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
 
  protected:
   std::string value_;
+  bool pending_publish_{false};
 
   static void cp1251_to_utf8(char *out, const char *in) {
     static const int table[128] = {
