@@ -187,11 +187,11 @@ void DlmsCosemComponent::setup() {
     if (this->push_custom_pattern_dsl_.length() > 0) {
       auto split_view = this->push_custom_pattern_dsl_ | std::views::split(';');
       for (const auto &pattern : split_view) {
-          std::string pattern_str;
-          for (auto it = pattern.begin(); it != pattern.end(); ++it) {
-            pattern_str += *it;
-          }
-          this->axdr_parser_->register_pattern_dsl("CUSTOM", pattern_str, 0);
+        std::string pattern_str;
+        for (auto it = pattern.begin(); it != pattern.end(); ++it) {
+          pattern_str += *it;
+        }
+        this->axdr_parser_->register_pattern_dsl("CUSTOM", pattern_str, 0);
       }
     }
 
@@ -302,7 +302,6 @@ void DlmsCosemComponent::loop() {
         }
       }
 #endif
-
 
     } break;
 
@@ -530,9 +529,9 @@ void DlmsCosemComponent::handle_comms_rx_() {
     if (this->is_push_mode()) {
       ESP_LOGV(TAG, "Push mode parse error, returning to listening");
       this->set_next_state_(State::IDLE);
-    } else 
-#endif    
-    if (reading_state_.mission_critical) {
+    } else
+#endif
+        if (reading_state_.mission_critical) {
       this->abort_mission_();
     }
     // if not critical - just move forward
@@ -578,7 +577,6 @@ void DlmsCosemComponent::handle_buffers_rcv_() {
 
 void DlmsCosemComponent::handle_association_req_() {
   this->log_state_();
-  // this->start_comms_and_next(&aarq_rr_, State::ASSOCIATION_RCV);
   this->prepare_and_send_dlms_aarq();
 }
 
@@ -625,14 +623,24 @@ void DlmsCosemComponent::handle_data_enq_() {
   auto req = this->loop_state_.request_iter->first;
   auto sens = this->loop_state_.request_iter->second;
   auto type = sens->get_obis_class();
+  bool is_text_sensor = sens->get_type() == SensorType::TEXT_SENSOR;
+  bool skip_gurux_value_update =
+      is_text_sensor && type != DLMS_OBJECT_TYPE_CLOCK;  // avoid using Gurux cl_updateValue for non-numeric sensors,
+                                                         // since it leaks memory in this case
   auto units_were_requested =
       (sens->get_type() == SensorType::SENSOR && type == DLMS_OBJECT_TYPE_REGISTER && !sens->has_got_scale_and_unit());
   if (units_were_requested) {
     auto ret = this->set_sensor_scale_and_unit(static_cast<DlmsCosemSensor *>(sens));
   }
 
+#ifdef USE_TEXT_SENSOR
+  if (sens->get_type() == SensorType::TEXT_SENSOR) {
+    var_clear(&this->buffers_.gx_register.value);
+  }
+#endif
+
   this->buffers_.gx_attribute = 2;
-  this->prepare_and_send_dlms_data_request(req.c_str(), type, !units_were_requested);
+  this->prepare_and_send_dlms_data_request(req.c_str(), type, !units_were_requested, skip_gurux_value_update);
 }
 
 void DlmsCosemComponent::handle_data_recv_() {
@@ -689,8 +697,9 @@ void DlmsCosemComponent::handle_publish_() {
   this->update_last_rx_time_();
 
   if (this->loop_state_.sensor_iter != this->sensors_.end()) {
-    if (this->loop_state_.sensor_iter->second->shall_we_publish()) {
-      this->loop_state_.sensor_iter->second->publish();
+    auto *sensor_base = this->loop_state_.sensor_iter->second;
+    if (sensor_base->shall_we_publish()) {
+      sensor_base->publish();
     }
     this->loop_state_.sensor_iter++;
   } else {
@@ -702,6 +711,19 @@ void DlmsCosemComponent::handle_publish_() {
     if (!this->is_push_mode()) {
       this->unlock_uart_session_();
     }
+
+    {
+      uint32_t h = ESP.getFreeHeap();
+
+      int32_t diff = this->last_free_heap_ - h;
+      if (diff == 0 || this->last_free_heap_ == 0) {
+        ESP_LOGV(TAG, "Free heap: %d; stable", h);
+      } else {
+        ESP_LOGW(TAG, "Free heap: %d; diff %d", h, diff);
+      }
+      this->last_free_heap_ = h;
+    }
+
     this->set_next_state_(State::IDLE);
     ESP_LOGD(TAG, "Total time: %u ms", millis() - this->loop_state_.session_started_ms);
   }
@@ -803,7 +825,8 @@ void DlmsCosemComponent::prepare_and_send_dlms_data_unit_request(const char *obi
   this->send_dlms_req_and_next(make, parse, State::DATA_ENQ, false, false);
 }
 
-void DlmsCosemComponent::prepare_and_send_dlms_data_request(const char *obis, int type, bool reg_init) {
+void DlmsCosemComponent::prepare_and_send_dlms_data_request(const char *obis, int type, bool reg_init,
+                                                            bool skip_gurux_value_update) {
   int ret = DLMS_ERROR_CODE_OK;
   if (type == DLMS_OBJECT_TYPE_CLOCK) {
     ret = cosem_init(BASE(this->buffers_.gx_clock), (DLMS_OBJECT_TYPE) type, obis);
@@ -817,18 +840,24 @@ void DlmsCosemComponent::prepare_and_send_dlms_data_request(const char *obis, in
   }
 
   auto make = [this, type]() {
-    return (type == DLMS_OBJECT_TYPE_CLOCK)
-               ? cl_read(&this->dlms_settings_, BASE(this->buffers_.gx_clock), this->buffers_.gx_attribute,
-                         &this->buffers_.out_msg)
-               : cl_read(&this->dlms_settings_, BASE(this->buffers_.gx_register), this->buffers_.gx_attribute,
-                         &this->buffers_.out_msg);
+    return (type == DLMS_OBJECT_TYPE_CLOCK) ? cl_read(&this->dlms_settings_, BASE(this->buffers_.gx_clock),
+                                                      this->buffers_.gx_attribute, &this->buffers_.out_msg)
+                                            : cl_read(&this->dlms_settings_, BASE(this->buffers_.gx_register),
+                                                      this->buffers_.gx_attribute, &this->buffers_.out_msg);
   };
-  auto parse = [this, type]() {
-    return (type == DLMS_OBJECT_TYPE_CLOCK)
-               ? cl_updateValue(&this->dlms_settings_, BASE(this->buffers_.gx_clock), this->buffers_.gx_attribute,
-                                &this->buffers_.reply.dataValue)
-               : cl_updateValue(&this->dlms_settings_, BASE(this->buffers_.gx_register), this->buffers_.gx_attribute,
-                                &this->buffers_.reply.dataValue);
+  auto parse = [this, type, skip_gurux_value_update]() -> int {
+    if (skip_gurux_value_update) {
+      return DLMS_ERROR_CODE_OK;
+    }
+    int ret = DLMS_ERROR_CODE_OK;
+    if (type == DLMS_OBJECT_TYPE_CLOCK) {
+      ret = cl_updateValue(&this->dlms_settings_, BASE(this->buffers_.gx_clock), this->buffers_.gx_attribute,
+                           &this->buffers_.reply.dataValue);
+    } else {
+      ret = cl_updateValue(&this->dlms_settings_, BASE(this->buffers_.gx_register), this->buffers_.gx_attribute,
+                           &this->buffers_.reply.dataValue);
+    }
+    return ret;
   };
   this->send_dlms_req_and_next(make, parse, State::DATA_RECV);
 }
@@ -961,7 +990,7 @@ int DlmsCosemComponent::set_sensor_value(uint16_t class_id, const uint8_t *obis_
   return DLMS_ERROR_CODE_OK;
 }
 
-#endif // ENABLE_DLMS_COSEM_PUSH_MODE
+#endif  // ENABLE_DLMS_COSEM_PUSH_MODE
 
 int DlmsCosemComponent::set_sensor_scale_and_unit(DlmsCosemSensor *sensor) {
   ESP_LOGD(TAG, "set_sensor_scale_and_unit");
@@ -1030,22 +1059,32 @@ int DlmsCosemComponent::set_sensor_value(DlmsCosemSensorBase *sensor, const char
         return this->dlms_reading_state_.last_error;
       }
 
-      auto var = &this->buffers_.gx_register.value;
-      if (var && var->byteArr && var->byteArr->size > 0) {
-        auto arr = var->byteArr;
-
-        ESP_LOGV(TAG, "data size=%d", arr->size);
-
-        bb_setInt8(arr, 0);     // add null-termination
-        if (arr->size > 128) {  // clip the string
-          ESP_LOGW(TAG, "String is too long %d, clipping to 128 bytes", arr->size);
-          arr->data[127] = '\0';
+      //
+      // this section is made to avoid memory leaks found in gurux library after cl_updateValue for non-numerics
+      //
+      const uint8_t *raw_ptr = nullptr;
+      uint16_t raw_len = 0;
+      auto *reply_value = &this->buffers_.reply.dataValue;
+      if (reply_value != nullptr && reply_value->byteArr != nullptr && reply_value->byteArr->size > 0) {
+        raw_ptr = reply_value->byteArr->data;
+        raw_len = reply_value->byteArr->size;
+      } else {
+        // Fallback to legacy object value path if parser populated gx_register.value.
+        auto *var = &this->buffers_.gx_register.value;
+        if (var != nullptr && var->byteArr != nullptr && var->byteArr->size > 0) {
+          raw_ptr = var->byteArr->data;
+          raw_len = var->byteArr->size;
         }
-        ESP_LOGV(TAG, "DATA: %s", format_hex_pretty(arr->data, arr->size).c_str());
+      }
+
+      if (raw_ptr != nullptr && raw_len > 0) {
+        ESP_LOGD(TAG, "data size=%d", raw_len);
+        ESP_LOGV(TAG, "DATA: %s", format_hex_pretty(raw_ptr, raw_len).c_str());
 
         if ((object_class == DLMS_OBJECT_TYPE_DATA) || (object_class == DLMS_OBJECT_TYPE_REGISTER) ||
             (object_class == DLMS_OBJECT_TYPE_EXTENDED_REGISTER)) {
-          auto data_as_string = dlms_data_as_string(vt, arr->data, arr->size);
+          auto data_as_string =
+              dlms_data_as_string(vt, raw_ptr, raw_len > UINT8_MAX ? UINT8_MAX : static_cast<uint8_t>(raw_len));
           static_cast<DlmsCosemTextSensor *>(sensor)->set_value(data_as_string.c_str(),
                                                                 this->cp1251_conversion_required_);
         } else {
@@ -1250,7 +1289,7 @@ const LogString *DlmsCosemComponent::state_to_string(State state) {
     case State::PUSH_DATA_PROCESS:
       return LOG_STR("PUSH_DATA_PROCESS");
 #endif
-      default:
+    default:
       return LOG_STR("UNKNOWN");
   }
 }
@@ -1260,7 +1299,8 @@ void DlmsCosemComponent::log_state_(State *next_state) {
     if (next_state == nullptr) {
       ESP_LOGV(TAG, "State::%s", LOG_STR_ARG(state_to_string(this->state_)));
     } else {
-      ESP_LOGV(TAG, "State::%s -> %s", LOG_STR_ARG(state_to_string(this->state_)), LOG_STR_ARG(state_to_string(*next_state)));
+      ESP_LOGV(TAG, "State::%s -> %s", LOG_STR_ARG(state_to_string(this->state_)),
+               LOG_STR_ARG(state_to_string(*next_state)));
     }
     this->last_reported_state_ = this->state_;
   }

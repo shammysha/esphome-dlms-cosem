@@ -170,7 +170,8 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void prepare_and_send_dlms_aarq();
   void prepare_and_send_dlms_auth();
   void prepare_and_send_dlms_data_unit_request(const char *obis, int type);
-  void prepare_and_send_dlms_data_request(const char *obis, int type, bool reg_init = true);
+  void prepare_and_send_dlms_data_request(const char *obis, int type, bool reg_init = true,
+                                          bool skip_gurux_value_update = false);
   void prepare_and_send_dlms_release();
   void prepare_and_send_dlms_disconnect();
 
@@ -312,6 +313,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void stats_dump();
 
   uint8_t failures_before_reboot_{0};
+  uint32_t last_free_heap_{0};
 
   // const char *dlms_error_to_string(int error);
 
