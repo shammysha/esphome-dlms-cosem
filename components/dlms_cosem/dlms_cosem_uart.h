@@ -127,6 +127,12 @@ class DlmsCosemUart final : public uart::ESP8266UartComponent {
 #endif
 
 #ifdef USE_ESP_IDF
+
+// backward compatibility with old IDF versions
+#ifndef portTICK_PERIOD_MS
+#define portTICK_PERIOD_MS portTICK_RATE_MS
+#endif
+
 class DlmsCosemUart final : public uart::IDFUARTComponent {
  public:
   DlmsCosemUart(uart::IDFUARTComponent &uart)
@@ -165,7 +171,12 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
       this->has_peek_ = false;
     }
     if (length_to_read > 0)
+<<<<<<< HEAD
       uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_RATE_MS);
+=======
+      uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
+    xSemaphoreGive(this->ilock_);
+>>>>>>> branch 'shammysha-patch-1' of https://github.com/shammysha/esphome-dlms-cosem.git
 
     return true;
   }
