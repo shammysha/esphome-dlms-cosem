@@ -89,15 +89,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
 
   // Reconfigure baudrate
   void update_baudrate(uint32_t baudrate) {
-    auto &lock = uart_.*(&DlmsCosemUart::lock_);
-    if (lock != nullptr) {
-      xSemaphoreTake(lock, portMAX_DELAY);
-      uart_set_baudrate(iuart_num_, baudrate);
-      xSemaphoreGive(lock);
-    } else {
-      // Lock not initialized yet, just set baudrate without locking
-      uart_set_baudrate(iuart_num_, baudrate);
-    }
+    uart_set_baudrate(iuart_num_, baudrate);
   }
 
   bool read_one_byte(uint8_t *data) { return read_array_quick_(data, 1); }
@@ -121,14 +113,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
     size_t length_to_read = len;
     if (!this->check_read_timeout_quick_(len))
       return false;
-    
-    auto &lock = uart_.*(&DlmsCosemUart::lock_);
-    bool locked = false;
-    if (lock != nullptr) {
-      xSemaphoreTake(lock, portMAX_DELAY);
-      locked = true;
-    }
-    
+
     if (this->has_peek_) {
       length_to_read--;
       *data = this->peek_byte_;
@@ -144,10 +129,6 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
       } else {
         uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
       }
-    }
-    
-    if (locked) {
-      xSemaphoreGive(lock);
     }
 
     return true;
