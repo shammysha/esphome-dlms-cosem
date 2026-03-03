@@ -1,14 +1,9 @@
 #pragma once
 #include <cstdint>
 
-#ifdef USE_ESP_IDF
+#ifdef USE_ESP32
 #include "esphome/components/uart/uart_component_esp_idf.h"
 #include "esphome/core/log.h"
-#endif
-
-#ifdef USE_ESP32_FRAMEWORK_ARDUINO
-#include "esphome/components/uart/uart_component_esp32_arduino.h"
-#include <HardwareSerial.h>
 #endif
 
 #ifdef USE_ESP8266
@@ -19,52 +14,6 @@ namespace esphome {
 namespace dlms_cosem {
 
 static const uint32_t TIMEOUT = 20;  // default value in uart implementation is 100ms
-
-#ifdef USE_ESP32_FRAMEWORK_ARDUINO
-
-class DlmsCosemUart final : public uart::ESP32ArduinoUARTComponent {
- public:
-  DlmsCosemUart(uart::ESP32ArduinoUARTComponent const &uart) : uart_(uart), hw_(uart.*(&DlmsCosemUart::hw_serial_)) {}
-
-  // Reconfigure baudrate
-  void update_baudrate(uint32_t baudrate) { this->hw_->updateBaudRate(baudrate); }
-
-  /// @brief Reads one byte. Uses 20ms inter-character timeout.
-  /// @param data Pointer to one byte buffer to store data
-  /// @retval true byte received
-  /// @retval false no data
-  /// @remarks
-  /// Default @c read_byte() function waits 100 ms when no data in input buffer.
-  /// This increase time spent in @c loop() function above accepted value (50ms).
-  bool read_one_byte(uint8_t *data) {
-    if (!this->check_read_timeout_quick_(1))
-      return false;
-    this->hw_->readBytes(data, 1);
-    return true;
-  }
-
- protected:
-  /// @brief Helper function for @ref read_one_byte()
-  /// @remarks
-  /// Uses 20ms timeout instead of default 100ms.
-  bool check_read_timeout_quick_(size_t len) {
-    if (this->hw_->available() >= int(len))
-      return true;
-
-    uint32_t start_time = millis();
-    while (this->hw_->available() < int(len)) {
-      if (millis() - start_time > TIMEOUT) {
-        return false;
-      }
-      yield();
-    }
-    return true;
-  }
-
-  uart::ESP32ArduinoUARTComponent const &uart_;
-  HardwareSerial *const hw_;
-};
-#endif
 
 #ifdef USE_ESP8266
 
@@ -126,7 +75,7 @@ class DlmsCosemUart final : public uart::ESP8266UartComponent {
 };
 #endif
 
-#ifdef USE_ESP_IDF
+#ifdef USE_ESP32
 
 // backward compatibility with old IDF versions
 #ifndef portTICK_PERIOD_MS
@@ -140,7 +89,8 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
 
   // Reconfigure baudrate
   void update_baudrate(uint32_t baudrate) {
-    uart_set_baudrate(iuart_num_, baudrate);
+      uart_set_baudrate(iuart_num_, baudrate);
+    }
   }
 
   bool read_one_byte(uint8_t *data) { return read_array_quick_(data, 1); }
@@ -164,14 +114,23 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
     size_t length_to_read = len;
     if (!this->check_read_timeout_quick_(len))
       return false;
+
     if (this->has_peek_) {
       length_to_read--;
       *data = this->peek_byte_;
       data++;
       this->has_peek_ = false;
     }
-    if (length_to_read > 0)
-      uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
+    if (length_to_read > 0) {
+      // If no valid hardware UART, fall back to base read_array (e.g., BLE-backed UART)
+      if (this->iuart_num_ < UART_NUM_0 || this->iuart_num_ >= UART_NUM_MAX) {
+        if (!uart_.read_array(data, length_to_read)) {
+          return false;
+        }
+      } else {
+        uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
+      }
+    }
 
     return true;
   }
