@@ -89,8 +89,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
 
   // Reconfigure baudrate
   void update_baudrate(uint32_t baudrate) {
-      uart_set_baudrate(iuart_num_, baudrate);
-    }
+    uart_set_baudrate(iuart_num_, baudrate);
   }
 
   bool read_one_byte(uint8_t *data) { return read_array_quick_(data, 1); }
