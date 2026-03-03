@@ -171,12 +171,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
       this->has_peek_ = false;
     }
     if (length_to_read > 0)
-<<<<<<< HEAD
-      uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_RATE_MS);
-=======
       uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
-    xSemaphoreGive(this->ilock_);
->>>>>>> branch 'shammysha-patch-1' of https://github.com/shammysha/esphome-dlms-cosem.git
 
     return true;
   }
