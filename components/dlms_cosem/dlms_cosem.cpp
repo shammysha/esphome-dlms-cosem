@@ -4,9 +4,6 @@
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
-#ifdef USE_ESP_IDF
-#include <esp_heap_caps.h>
-#endif
 #include <sstream>
 #include <ranges>
 #include "dlms_cosem_helpers.h"
@@ -716,11 +713,7 @@ void DlmsCosemComponent::handle_publish_() {
     }
 
     {
-#ifdef USE_ARDUINO
       uint32_t h = ESP.getFreeHeap();
-#else
-      uint32_t h = esp_get_free_heap_size();
-#endif
 
       int32_t diff = this->last_free_heap_ - h;
       if (diff == 0 || this->last_free_heap_ == 0) {
