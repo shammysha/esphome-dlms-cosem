@@ -1,4 +1,4 @@
-[\[English version\]](README.en.md) [\[Русская версия\]](README.md)
+[\[English version\]](README.md) [\[Русская версия\]](README.ru.md)
 
 [DLMS/COSEM](https://github.com/latonita/esphome-dlms-cosem) •
 [IEC-61107](https://github.com/latonita/esphome-iec61107-meter) •
@@ -11,7 +11,7 @@
 [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble)
 
 # esphome-dlms-cosem
-ESPHome integration for DLMS/COSEM (SPODES) electricity meters (Energomera CE207/CE307/CE308, Milur 107S, MIR, Nartis, RiM, Pulsar, ZPA AM375, ZPA ZE312, Sagemcom XT211 and many others) via RS‑485 or optical port (*). 
+ESPHome integration for DLMS/COSEM (SPODES) electricity meters (Energomera CE207/CE307/CE308, Milur 107S, MIR, Nartis, RiM, Pulsar, Aidon, Kamstrup, Landis+Gyr, any HAN, ZPA AM375, ZPA ZE312, Sagemcom XT211 and many others) via RS‑485 or optical port (*). 
 
 Additionally, Bluetooth BLE UART connection is possible (Nartis I300/I100) using the [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble) component.
 

@@ -1,76 +1,75 @@
-[\[Русская версия\]](README.md) [\[English version\]](README.en.md)
+[\[English version\]](README.md) [\[Русская версия\]](README.ru.md)
 
-
-[СПОДЭС/DLMS/COSEM](https://github.com/latonita/esphome-dlms-cosem) •
-[МЭК-61107/IEC-61107](https://github.com/latonita/esphome-iec61107-meter) •
-[Энергомера МЭК/IEC](https://github.com/latonita/esphome-energomera-iec) •
-[Энергомера CE](https://github.com/latonita/esphome-energomera-ce) •
-[СПб ЗИП ЦЭ2727А](https://github.com/latonita/esphome-ce2727a-meter) •
-[Ленэлектро ЛЕ-2](https://github.com/latonita/esphome-le2-meter) •
-[Пульсар-М](https://github.com/latonita/esphome-pulsar-m) •
-[Энергомера BLE](https://github.com/latonita/esphome-energomera-ble) •
+[DLMS/COSEM](https://github.com/latonita/esphome-dlms-cosem) •
+[IEC-61107](https://github.com/latonita/esphome-iec61107-meter) •
+[Energomera IEC](https://github.com/latonita/esphome-energomera-iec) •
+[Energomera CE](https://github.com/latonita/esphome-energomera-ce) •
+[SPb ZIP CE2727A](https://github.com/latonita/esphome-ce2727a-meter) •
+[Lenelektro LE-2](https://github.com/latonita/esphome-le2-meter) •
+[Pulsar-M](https://github.com/latonita/esphome-pulsar-m) •
+[Energomera BLE](https://github.com/latonita/esphome-energomera-ble) •
 [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble)
 
 # esphome-dlms-cosem
-Подключение EspHome к счетчикам электроэнергии по протоколу DLMS/COSEM/СПОДЭС (Энергомера CE207/CE307/CE308, Милур 107S, Мир, Нартис, РиМ, Пульсар, ZPA AM375, ZPA ZE312, Sagemcom XT211 и многие другие) через RS-485 интерфейст или через оптопорт(*). Кроме того, возможно подключение через Bluetooth BLE UART (НАРТИС-И100-SP1 и НАРТИС-И300-SP31), используя компонент [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble).
+ESPHome integration for DLMS/COSEM (SPODES) electricity meters (Energomera CE207/CE307/CE308, Milur 107S, MIR, Nartis, RiM, Pulsar, Aidon, Kamstrup, Landis+Gyr, any HAN, ZPA AM375, ZPA ZE312, Sagemcom XT211 and many others) via RS‑485 or optical port (*). 
 
-Два режима работы - запрос-ответ и режим ожидания данных от счетчика (PUSH).
+Additionally, Bluetooth BLE UART connection is possible (Nartis I300/I100) using the [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble) component.
 
-Инструкции по подключению esp32/esp8266 к счётчику можно увидеть в соседнем компоненте https://github.com/latonita/esphome-energomera-iec
+Two operating modes: request/response polling and passive PUSH (meter-originated data).
 
-(*) Через оптопорт можно работать с приборами, которые сразу работают на скорости 9600. Вариант, когда необходимо сначала подключаться на скорости 300, а потом выходить на рабочую скорость - пока не поддерживается (нужно только найти того, кто сможет протестировать).
+For ESP32/ESP8266 physical wiring examples see: https://github.com/latonita/esphome-energomera-iec
 
+(*) Optical head currently supported only when the meter already uses 9600 baud. The sequence “start at 300 baud then switch to 9600” isn’t implemented yet (needs testing hardware).
 
-# Оглавление
-- [Функции](#функции)
-  - [Реализованы](#реализованы)
-  - [Возможные задачи на будущее](#возможные-задачи-на-будущее)
-- [Установка](#установка)
-- [Быстрый старт](#быстрый-старт)
-  - [Минимальная конфигурация хаба и одного сенсора, режим запрос-ответ](#минимальная-конфигурация-хаба-и-одного-сенсора-режим-запрос-ответ)
-  - [Минимальная конфигурация хаба и одного сенсора, режим PUSH](#минимальная-конфигурация-хаба-и-одного-сенсора-режим-push)
-- [Конфигурация хаба (dlms_cosem)](#конфигурация-хаба-dlms_cosem)
-  - [Адресация: client_address и server_address](#адресация-client_address-и-server_address)
-- [cp1251 и русские строки](#cp1251-и-русские-строки)
-- [Сенсоры](#сенсоры)
-  - [Числовой сенсор (sensor)](#числовой-сенсор-sensor)
-  - [Текстовый сенсор (text_sensor)](#текстовый-сенсор-text_sensor)
-  - [Бинарные сенсоры (binary_sensor)](#бинарные-сенсоры-binary_sensor)
-- [Несколько счётчиков](#несколько-счётчиков)
-- [Особенности счетчиков](#особенности-счетчиков)
-  - [Нартис И100-W112](#нартис-и100-w112)
-  - [Нартис И300/И100 RF2400 - Bluetooth BLE](#нартис-и300и100-rf2400---bluetooth-ble)
-  - [РиМ489.38 и другие из серии](#рим48938-и-другие-из-серии)
-- [Примеры конфигураций](#примеры-конфигураций)
-  - [Однофазный счетчик (ПУ категории D)](#однофазный-счетчик-пу-категории-d)
-  - [Трехфазный счетчик в режиме push](#трехфазный-счетчик-в-режиме-push)
-- [Диагностика и советы](#диагностика-и-советы)
-- [Лицензия](#лицензия)
+# Table of Contents
+- [Features](#features)
+  - [Implemented](#implemented)
+  - [Roadmap / Future Ideas](#roadmap--future-ideas)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Minimal hub + one sensor (polling mode)](#minimal-hub--one-sensor-polling-mode)
+  - [Minimal hub + one sensor (PUSH mode)](#minimal-hub--one-sensor-push-mode)
+- [Hub configuration (dlms_cosem)](#hub-configuration-dlms_cosem)
+  - [Addressing: client_address & server_address](#addressing-client_address--server_address)
+- [cp1251 and Cyrillic strings](#cp1251-and-cyrillic-strings)
+- [Sensors](#sensors)
+  - [Numeric sensor (sensor)](#numeric-sensor-sensor)
+  - [Text sensor (text_sensor)](#text-sensor-text_sensor)
+  - [Binary sensors (binary_sensor)](#binary-sensors-binary_sensor)
+- [Multiple meters](#multiple-meters)
+- [Meter specifics](#meter-specifics)
+  - [Nartis I100-W112](#nartis-i100-w112)
+  - [Nartis I300/I100 RF2400 - Bluetooth BLE](#nartis-i300i100-rf2400---bluetooth-ble)
+  - [RiM489.38 and related models](#rim48938-and-related-models)
+- [Configuration examples](#configuration-examples)
+  - [Single-phase meter (Category D)](#single-phase-meter-category-d)
+  - [Three-phase meter in PUSH mode](#three-phase-meter-in-push-mode)
+- [Diagnostics & tips](#diagnostics--tips)
+- [License](#license)
 
-# Функции
-## Реализованы
-- Подключние по бинарному протоколу HDLC без аутентификации (NONE) и с низким уровнем (LOW - доступ с паролем)
-- Работа в режиме опроса счетчика и режиме ожидания
-- Поддержка базовых цифровых типов данных (int/float)
-- Поддержка базовых текстовых данных (octet-string)
-- Поддержка OBIS классов 1 (Данные), 2 (Регистр), 3 (Расширенный регистр)
-- Поддержка OBIS класса 8 (Часы)
-- Поддержка русских символов в ответах от счетчиков (Нартис И100-W112, РиМ 489 , ... )
-- Задание логического и физического адресов
-- Работа с несколькими счетчиками на одной шине
+# Features
+## Implemented
+- HDLC binary transport, authentication NONE and LOW (password)
+- Polling mode and passive PUSH mode
+- Basic numeric data types (int/float)
+- Basic textual data (octet-string)
+- Major obis classes - 1 (Data), 2 (Register), 3 (Extended Register)
+- Clock obis class - 8 (Clocj) 
+- Cyrillic (cp1251) decoding to UTF‑8 (Nartis I100-W112, RiM 489, …)
+- Logical & physical address specification
+- Multiple meters on one bus
 
+## Roadmap / Future Ideas
+- Time synchronization
+- Relay control
+- Full optical head speed negotiation (300 → 9600)
 
-## Возможные задачи на будущее
-- Синхронизация времени
-- Управление реле
-- Полноценная работа через оптопорт по стандартной процедуре (300 → 9600)
-
-Если готовы помочь тестированием — пишите на anton.viktorov@live.com.
+If you can help with testing, contact: anton.viktorov@live.com
 
 ---
 
-## Установка
-Добавьте внешний компонент в конфигурацию ESPHome:
+## Installation
+Add the external component to your ESPHome config:
 
 ```yaml
 external_components:
@@ -79,13 +78,12 @@ external_components:
     refresh: 1s
 ```
 
-Требуется настроенный UART (RS‑485 через конвертер) или оптопорт.
+A configured UART (RS‑485 adapter) or optical head is required.
 
 ---
 
-## Быстрый старт
-### Минимальная конфигурация хаба и одного сенсора, режим запрос-ответ:
-
+## Quick Start
+### Minimal hub + one sensor (polling mode)
 ```yaml
 uart:
   id: bus_1
@@ -98,7 +96,7 @@ uart:
 
 dlms_cosem:
   client_address: 32
-  server_address: 1      # см. документацию на ваш счётчик
+  server_address: 1      # see your meter manual
   auth: true
   password: "12345678"
   update_interval: 60s
@@ -115,8 +113,7 @@ sensor:
 
 ---
 
-### Минимальная конфигурация хаба и одного сенсора, режим PUSH:
-
+### Minimal hub + one sensor (PUSH mode)
 ```yaml
 uart:
   id: bus_1
@@ -142,8 +139,7 @@ sensor:
 
 ---
 
-## Конфигурация хаба (`dlms_cosem`)
-
+## Hub configuration (`dlms_cosem`)
 ```yaml
 dlms_cosem:
   client_address: 32
@@ -160,57 +156,53 @@ dlms_cosem:
   id: energo_01
   cp1251: true
   push_mode: false
-  push_show_log: false
-  # push_custom_pattern: TV,TC,TSU,TO    # Подробнее в разделе PUSH
+  # push_custom_pattern: TV,TC,TSU,TO    # See PUSH chapter
 ```
+Parameters:
+- **client_address** (*Optional*) — client access level. 32 often used (needs password). Default: 16.
+- **server_address** (*Optional*) — HDLC address. Number or object. Default: 1.
+  - **logical_device** (*Optional*) — logical device id. Default: 1.
+  - **physical_device** (**Required**) — physical device id (often derived from serial). See manual.
+  - **address_length** (*Optional*) — address length (1|2|4 bytes). Default: 2.
+- **auth** (*Optional*) — enable authentication. Default: false.
+- **password** (*Optional*) — LOW auth password.
+- **update_interval** (*Optional*) — polling interval. Default: 60s.
+- **receive_timeout** (*Optional*) — response timeout. Default: 500ms.
+- **delay_between_requests** (*Optional*) — pause between requests. Default: 50ms.
+- **flow_control_pin** (*Optional*) — RE/DE direction pin for RS‑485.
+- **id** (*Optional*) — hub id (if you have several).
+- **cp1251** (*Optional*) — cp1251 → UTF‑8 conversion. Default: true.
+- **push_mode** (*Optional*) — passive push mode. In PUSH most other params ignored. Default: false.
+- **push_show_log** (*Optional*) - show detailed log - which Cosem objects found in passive mode (Push mode). Default: false.
+- **push_custom_pattern** (*Optional) - custom Cosem object pattern. Default: None.
 
-Параметры:
-- **client_address** (*Optional*) — уровень доступа клиента. Для чтения часто используется 32 (требует пароль). По умолчанию: 16.
-- **server_address** (*Optional*) — HDLC‑адрес. Можно указать числом либо как объект. По умолчанию: 1.
-  - **logical_device** (*Optional*) — логический адрес устройства. По умолчанию: 1.
-  - **physical_device** (**Required**) — физический адрес устройства (часто зависит от серийного номера). См. инструкцию к счётчику.
-  - **address_length** (*Optional*) — длина адреса (1|2|4 байта). По умолчанию: 2.
-- **auth** (*Optional*) — включить авторизацию. По умолчанию: false.
-- **password** (*Optional*) — пароль при LOW‑auth.
-- **update_interval** (*Optional*) — период опроса. По умолчанию: 60s.
-- **receive_timeout** (*Optional*) — таймаут ожидания ответа. По умолчанию: 500ms.
-- **delay_between_requests** (*Optional*) — пауза между запросами. По умолчанию: 50ms.
-- **flow_control_pin** (*Optional*) — пин управления направлением RE/DE RS‑485‑модуля.
-- **id** (*Optional*) — идентификатор хаба (укажите, если их несколько).
-- **cp1251** (*Optional*) — конвертация cp1251 → UTF‑8 для текстовых значений. По умолчанию: true.
-- **push_mode** (*Optional*) — включить пассивный режим (Push mode), если поддерживается. В режиме PUSH большинство параметров не имеют значения. По умолчанию: false.
-- **push_show_log** (*Optional*) - в пассивном режиме (Push mode) выводить подробный лог о найденных COSEM объектах. По умолчанию: false.
-- **push_custom_pattern** (*Optional) - Формат Cosem объекта. По умолчанию: нет.
+### Addressing: client_address & server_address
+- Not needed in PUSH mode.
+- If omitted defaults are used (16 and 1). Always check meter docs.
+- client_address 32 is common (password required). Levels:
 
-### Адресация: client_address и server_address
-- Адреса не нужны, если используется режим PUSH.
-- Если не указать, будут использованы значения по умолчанию (16 и 1). Но лучше свериться с документацией к конкретному счётчику.
-- Часто используется client_address = 32 (требуется пароль). Уровни по СПОДЭС:
+| Code | Level | Operations | Protection |
+|------|-------|-----------|------------|
+| 16 | Public client | read | none |
+| 32 | Meter reading | read, selective read, some actions | password |
+| 48 | Configurator | read/write/select/actions | password or encryption (*) |
 
-| Код | Уровень | Операции | Защита |
-|-----|---------|----------|--------|
-| 16  | Публичный клиент | чтение | нет |
-| 32  | Считыватель показаний | чтение, выборка, отдельные действия | пароль |
-| 48  | Конфигуратор | чтение/запись/выборка/действия | пароль или шифрование (*) |
+(*) Encryption not supported yet.
 
-(*) Шифрование пока не поддерживается.
+server_address usually 2 bytes: high byte = logical address, low byte = physical. See manual.
 
-server_address обычно двухбайтный: старший байт — логический адрес, младший — физический. Детали — в инструкции к счётчику.
-
-Пример (Милур 107S): физический адрес = (последние 4 цифры серийного номера + 16).
-
-
+Example (Milur 107S): physical = (last 4 serial digits + 16).
 
 ---
 
-### cp1251 и русские строки
-Некоторые счётчики отдают строки в cp1251 (например, тип ПУ по `0.0.96.1.1.255`). Для корректного отображения в Home Assistant включите `cp1251: true` на уровне хаба или конкретного текстового сенсора. Если конвертация мешает, её можно отключить глобально или точечно в сенсоре.
+## cp1251 and Cyrillic strings
+Some meters output cp1251 (e.g. type at `0.0.96.1.1.255`). Enable `cp1251: true` at hub or per text sensor. Disable globally or per‑sensor if conversion breaks something.
 
 ---
 
-## Сенсоры
+## Sensors
 
-Настройка сенсоров в режиме запрос-ответ и в пассивном режиме (Push) не отличается ничем, кроме того, что в пассивном режиме мы не всегда знаем, какие данные присылает счетчик. Для того, чтобы узнать, какие данные счетчик отправляет включите режим логирования:
+Sensor configuration in polling and passive (Push) modes is identical, except that in passive mode you often don’t know in advance which objects the meter will send. To discover what the meter is pushing, enable extended logging:
 
 ```yaml
 dlms_cosem:
@@ -218,48 +210,46 @@ dlms_cosem:
   push_show_log: true
 ```
 
-После чего компонент будет выводить в лог опознанные Cosem объекты. Пример лога тут: [cosem-search.log](cosem-search.log). После настройки сенсоров выключите лог.
+After that the component will print recognized COSEM objects to the log. Example log: [cosem-search.log](cosem-search.log). Disable `push_show_log` once you’ve created the needed sensors.
 
-
-### Числовой сенсор (`sensor`)
+### Numeric sensor (`sensor`)
 ```yaml
 sensor:
   - platform: dlms_cosem
     name: Phase Current
     obis_code: 1.0.11.7.0.255
-    multiplier: 1.0        # предварительная мультипликация (до filters:)
-    dont_publish: false    # не публиковать в шину (видно только в логах)
+    multiplier: 1.0        # pre-multiply (before filters:)
+    dont_publish: false    # do not publish, only log
     unit_of_measurement: A
     accuracy_decimals: 1
     device_class: current
     state_class: measurement
 ```
 
-### Текстовый сенсор (`text_sensor`)
+### Text sensor (`text_sensor`)
 ```yaml
 text_sensor:
   - platform: dlms_cosem
     name: Type
     obis_code: 0.0.96.1.1.255
-    # obis_class: 8         # для объектов CLOCK (класс 8) необходимо указать класс вручную
     dont_publish: false
-    # cp1251: false         # переопределение настройки хаба (опционально)
+    # cp1251: false        # override hub setting (optional)
     entity_category: diagnostic
 ```
-- **cp1251** — если указано у сенсора, перекрывает настройку хаба. Полезно для полей вроде `0.0.96.1.1.255` (тип ПУ на русском).
+- **cp1251** — per-sensor override. Useful for fields like `0.0.96.1.1.255`.
 
-### Бинарные сенсоры (`binary_sensor`)
+### Binary sensors (`binary_sensor`)
 ```yaml
 binary_sensor:
   - platform: dlms_cosem
     connection:
-      name: Connection      # есть связь с прибором
+      name: Connection      # link available
     session:
-      name: Session         # активна сессия
+      name: Session         # active session
     transmission:
-      name: Transmission    # идёт обмен (каждый запрос)
+      name: Transmission    # each request
 ```
-Пример использования для индикации активности светодиодом:
+LED activity example:
 ```yaml
 binary_sensor:
   - platform: dlms_cosem
@@ -279,10 +269,8 @@ output:
 
 ---
 
-## Несколько счётчиков
-
-- NB: В режиме PUSH может быть только один счетчик на одной шине.
-
+## Multiple meters
+- NB: Only one meter per bus in PUSH mode.
 ```yaml
 uart:
   - id: bus_1
@@ -349,25 +337,21 @@ sensor:
     accuracy_decimals: 1
     device_class: current
     state_class: measurement
-
 ```
 
-# Особенности счетчиков
+# Meter specifics
+## Nartis I100-W112
+- Device type in Russian. For `0.0.96.1.1.255` set `cp1251: true`.
+- Sometimes manual values differ from reality. Example working set:
+  * Admin password: 0000000100000001
+  * Read password: 00000001
+  * Logical address: 1
+  * Physical address: 17
+  * Address size: 2
 
-## Нартис И100-W112
-
-- Передает тип ПУ на русском языке. Для текстового сенсора `0.0.96.1.1.255` необходимо установить `cp1251: true`
-- Иногда пароли и явки в инструкции отличаются от реальных. Пример рабочих параметро с одного из счетчиков:
-
-    * Пароль администрирования: 0000000100000001
-    * Пароль чтения: 00000001
-    * Логический адрес: 1
-    * Физический адрес: 17
-    * Размер адреса: 2
-
-## Нартис И300/И100 RF2400 - Bluetooth BLE
-Счетчики Нартис с опцией RF2400 могут быть подключены через соседний компонент `ble_nus_client`. См. [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble).
-Проверено с НАРТИС-И300-SP31-2-A1R1-230-5-100A-TN-RF2400/2-RS485-P1-EНKMOQ1V3-D.
+## Nartis I300/I100 RF2400 - Bluetooth BLE
+Nartis meters with RF2400 option can be connected via the companion `ble_nus_client` component. See [Nordic UART (BLE NUS)](https://github.com/latonita/esphome-nordic-uart-ble).
+Tested with NARTIS-I300-SP31-2-A1R1-230-5-100A-TN-RF2400/2-RS485-P1-EНKMOQ1V3-D.
 
 ```yaml
 
@@ -380,7 +364,7 @@ external_components:
     components: [ble_nus_client]
   
 ble_client:
-  - mac_address: "11:22:33:44:55:66" # Bluetooth MAC адрес счетчика
+  - mac_address: "11:22:33:44:55:66" # Bluetooth MAC address of the meter
     id: nartis_i300_ble
     auto_connect: false
     
@@ -393,7 +377,7 @@ esp32_ble_tracker:
 
 ble_nus_client:
   id: ble_uart
-  pin: 123456  # пин код Bluetooth
+  pin: 123456  # Bluetooth PIN code
   service_uuid: 6e400001-b5a3-f393-e0a9-e50e24dc4179
   rx_uuid: 6e400002-b5a3-f393-e0a9-e50e24dc4179
   tx_uuid: 6e400003-b5a3-f393-e0a9-e50e24dc4179   
@@ -407,23 +391,18 @@ dlms_cosem:
   client_address: 32
   server_address: 1
   auth: true
-  password: "00002080"  # Пароль доступа. Ваш пароль может быть другим - проверьте паспорт на ваш прибор учета.
+  password: "00002080"  # Access password. Your password may differ - check your meter documentation.
   receive_timeout: 5000ms
   update_interval: 60s
 
 
 ```
-## РиМ489.38 и другие из серии
-- Передает тип ПУ на русском языке. Для текстового сенсора `0.0.96.1.1.255` необходимо установить `cp1251: true`
+## RiM489.38 and related models
+- Device type in Russian: for `0.0.96.1.1.255` use `cp1251: true`.
 
-
-# Примеры конфигураций
-
-## Однофазный счетчик (ПУ категории D) 
-Используется список параметров ПУ категории D из стандарта СПОДЭС. Они применяются в однофазных ПУ потребителей.
-
-Пример файла конфигурации, протестированого на Энергомера CE207-SPds.
-
+# Configuration examples
+## Single-phase meter (Category D)
+Uses Category D parameter list from SPODES standard. Tested with Energomera CE207-SPds.
 ```yaml
 esphome:
   name: energomera-ce207-spds
@@ -431,6 +410,8 @@ esphome:
 
 esp32:
   board: esp32dev
+  framework:
+    type: arduino
 
 external_components:
   - source: github://latonita/esphome-dlms-cosem
@@ -592,15 +573,12 @@ text_sensor:
     entity_category: diagnostic
 ```
 
-
-## Трехфазный счетчик в режиме push
-
-Работа в режиме PUSH на примере счетчика ZPA AM375.
-
+## Three-phase meter in PUSH mode
+Example: ZPA AM375.
 ```yaml
 esphome:
-  name: zpa-am375
-  friendly_name: zpa-am375
+  name: energomera-ce207-spds
+  friendly_name: Energomera-ce207-spds
 
 esp32:
   board: esp32dev
@@ -620,15 +598,6 @@ uart:
   data_bits: 8
   parity: NONE
   stop_bits: 1
-
-dlms_cosem:
-  id: energo_01
-  client_address: 32
-  server_address: 1
-  auth: true
-  password: "12345678"
-  update_interval: 60s
-  receive_timeout: 1s
 
 dlms_cosem:
   id: cosem1
@@ -653,6 +622,7 @@ text_sensor:
     entity_category: diagnostic
 
 sensor:
+
   - platform: dlms_cosem
     id: active_energy_consumed
     name: Energy
@@ -715,19 +685,17 @@ sensor:
     accuracy_decimals: 0
     device_class: power
     state_class: measurement
-
 ```
 
+---
+
+## Diagnostics & tips
+- No response: check RE/DE pin (flow_control_pin) and RS‑485 adapter direction
+- Timeouts: increase `receive_timeout` and `delay_between_requests`
+- Addresses: re-check `client_address` / `server_address` (optical vs RS‑485 may differ)
+- Cyrillic garbage: enable `cp1251: true`
 
 ---
 
-## Диагностика и советы
-- Нет ответа: проверьте RE/DE (flow_control_pin) и направление конвертера RS‑485
-- Таймауты: увеличьте `receive_timeout` и `delay_between_requests`
-- Адреса: перепроверьте `client_address` и `server_address` по инструкции (учитывайте адреса для оптопорта vs RS‑485)
-- Русский текст «кракозябрами»: включите `cp1251: true`
-
----
-
-## Лицензия
-См. [LICENSE](LICENSE) в репозитории.
+## License
+See LICENSE file.
