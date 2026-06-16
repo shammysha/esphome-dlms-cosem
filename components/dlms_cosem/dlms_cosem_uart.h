@@ -120,6 +120,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
       data++;
       this->has_peek_ = false;
     }
+    ESP_LOGD("DlmsCosemUart", "Reading %d bytes from UART%d", length_to_read, this->iuart_num_);
     if (length_to_read > 0) {
       // If no valid hardware UART, fall back to base read_array (e.g., BLE-backed UART)
       if (this->iuart_num_ < UART_NUM_0 || this->iuart_num_ >= UART_NUM_MAX) {
@@ -127,6 +128,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
           return false;
         }
       } else {
+        ESP_LOGD("DlmsCosemUart", "Using hardware UART%d", this->iuart_num_);
         uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
       }
     }
