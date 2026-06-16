@@ -160,7 +160,7 @@ void DlmsCosemComponent::setup() {
   this->indicate_transmission(false);
 
 #ifdef USE_ESP32
-  iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::IDFUARTComponent *>(this->parent_));
+  iuart_ = make_unique<DlmsCosemUart>(*this->parent_, this->uart_is_ble_nus_);
 #endif
 
 #if USE_ESP8266

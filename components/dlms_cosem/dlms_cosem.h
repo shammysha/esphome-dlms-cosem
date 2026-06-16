@@ -76,6 +76,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   void set_receive_timeout_ms(uint32_t timeout) { this->receive_timeout_ms_ = timeout; };
   void set_delay_between_requests_ms(uint32_t delay) { this->delay_between_requests_ms_ = delay; };
   void set_flow_control_pin(GPIOPin *flow_control_pin) { this->flow_control_pin_ = flow_control_pin; };
+  void set_uart_is_ble_nus(bool is_ble_nus) { this->uart_is_ble_nus_ = is_ble_nus; }
 
   void register_sensor(DlmsCosemSensorBase *sensor);
 
@@ -117,6 +118,7 @@ class DlmsCosemComponent : public PollingComponent, public uart::UARTDevice {
   bool cp1251_conversion_required_{true};
 
   GPIOPin *flow_control_pin_{nullptr};
+  bool uart_is_ble_nus_{false};
   std::unique_ptr<DlmsCosemUart> iuart_;
 
   SensorMap sensors_;

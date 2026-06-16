@@ -84,8 +84,13 @@ class DlmsCosemUart final : public uart::ESP8266UartComponent {
 
 class DlmsCosemUart final : public uart::IDFUARTComponent {
  public:
-  DlmsCosemUart(uart::IDFUARTComponent &uart)
-      : uart_(uart), iuart_num_(uart.*(&DlmsCosemUart::uart_num_)) {}
+  DlmsCosemUart(uart::UARTComponent &uart, bool is_ble_nus)
+      // Our BLE NUS client has no hardware UART port, so force the read_array() fallback
+      // path below. Any other parent is a real IDF hardware UART, as before.
+      : uart_(uart),
+        iuart_num_(is_ble_nus ? UART_NUM_MAX
+                              : static_cast<uart_port_t>(
+                                    static_cast<uart::IDFUARTComponent &>(uart).get_hw_serial_number())) {}
 
   // Reconfigure baudrate
   void update_baudrate(uint32_t baudrate) {
@@ -120,7 +125,6 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
       data++;
       this->has_peek_ = false;
     }
-    ESP_LOGD("DlmsCosemUart", "Reading %d bytes from UART%d", length_to_read, this->iuart_num_);
     if (length_to_read > 0) {
       // If no valid hardware UART, fall back to base read_array (e.g., BLE-backed UART)
       if (this->iuart_num_ < UART_NUM_0 || this->iuart_num_ >= UART_NUM_MAX) {
@@ -128,7 +132,6 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
           return false;
         }
       } else {
-        ESP_LOGD("DlmsCosemUart", "Using hardware UART%d", this->iuart_num_);
         uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
       }
     }
@@ -136,7 +139,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
     return true;
   }
 
-  uart::IDFUARTComponent &uart_;
+  uart::UARTComponent &uart_;
   uart_port_t iuart_num_;
 };
 #endif
