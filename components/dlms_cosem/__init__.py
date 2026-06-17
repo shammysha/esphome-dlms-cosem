@@ -51,6 +51,13 @@ DlmsCosem = dlms_cosem_ns.class_(
     "DlmsCosemComponent", cg.Component, uart.UARTDevice
 )
 
+# Referenced by name only so the parent UART can be recognized as our BLE NUS
+# client (which has no hardware UART port) without importing that component.
+ble_nus_client_ns = cg.esphome_ns.namespace("ble_nus_client")
+BLENUSClientComponent = ble_nus_client_ns.class_(
+    "BLENUSClientComponent", uart.UARTComponent
+)
+
 BAUD_RATES = [300, 600, 1200, 2400, 4800, 9600, 19200]
 ADDRESS_LENGTH_ENUM = [1, 2, 4]
 
@@ -127,6 +134,13 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
+
+    # Detect whether the UART parent is our BLE NUS client (no hardware UART port).
+    full_id, _ = await cg.get_variable_with_full_id(config[uart.CONF_UART_ID])
+    is_ble_nus = isinstance(
+        full_id.type, cg.MockObjClass
+    ) and full_id.type.inherits_from(BLENUSClientComponent)
+    cg.add(var.set_uart_is_ble_nus(is_ble_nus))
 
     if flow_control_pin := config.get(CONF_FLOW_CONTROL_PIN):
         pin = await cg.gpio_pin_expression(flow_control_pin)

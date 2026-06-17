@@ -119,17 +119,24 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
   bool has_got_scale_and_unit() override { return true; }
   void set_cp1251_conversion_required(bool required) { this->cp1251_conversion_required_ = required; }
 
+  // Meters do not expose long text values; cap the source at MAX_TEXT_LEN symbols and
+  // trim the rest. This keeps the conversion buffer a fixed, bounded stack allocation.
+  static constexpr size_t MAX_TEXT_LEN = 128;
+
   void set_value(const char *value, bool hub_cp1251_conversion_required) {
-    std::string new_value;
+    // Worst case: every cp1251 byte expands to up to 3 UTF-8 bytes, plus terminator.
+    char buf[MAX_TEXT_LEN * 3 + 1];
     if (this->cp1251_conversion_required_.value_or(hub_cp1251_conversion_required)) {
-      char res[std::strlen(value) * 3 + 1];
-      cp1251_to_utf8(res, value);
-      new_value = std::string(res);
+      cp1251_to_utf8(buf, value, MAX_TEXT_LEN);
     } else {
-      new_value = std::string(value);
+      size_t len = std::strlen(value);
+      if (len > MAX_TEXT_LEN)
+        len = MAX_TEXT_LEN;
+      std::memcpy(buf, value, len);
+      buf[len] = '\0';
     }
-    if (!this->has_value_ || this->value_ != new_value) {
-      this->value_ = std::move(new_value);
+    if (!this->has_value_ || this->value_ != buf) {
+      this->value_ = buf;
       this->pending_publish_ = true;
     }
     has_value_ = true;
@@ -142,7 +149,9 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
   std::string value_;
   bool pending_publish_{false};
 
-  static void cp1251_to_utf8(char *out, const char *in) {
+  // Converts up to max_in cp1251 source bytes; stops early at NUL. Caller must size
+  // out for up to 3 bytes per input symbol plus a NUL terminator.
+  static void cp1251_to_utf8(char *out, const char *in, size_t max_in) {
     static const int table[128] = {
         0x82D0,   0x83D0,   0x9A80E2, 0x93D1,   0x9E80E2, 0xA680E2, 0xA080E2, 0xA180E2, 0xAC82E2, 0xB080E2, 0x89D0,
         0xB980E2, 0x8AD0,   0x8CD0,   0x8BD0,   0x8FD0,   0x92D1,   0x9880E2, 0x9980E2, 0x9C80E2, 0x9D80E2, 0xA280E2,
@@ -156,7 +165,9 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
         0xB3D0,   0xB4D0,   0xB5D0,   0xB6D0,   0xB7D0,   0xB8D0,   0xB9D0,   0xBAD0,   0xBBD0,   0xBCD0,   0xBDD0,
         0xBED0,   0xBFD0,   0x80D1,   0x81D1,   0x82D1,   0x83D1,   0x84D1,   0x85D1,   0x86D1,   0x87D1,   0x88D1,
         0x89D1,   0x8AD1,   0x8BD1,   0x8CD1,   0x8DD1,   0x8ED1,   0x8FD1};
-    while (*in)
+    size_t consumed = 0;
+    while (*in && consumed < max_in) {
+      consumed++;
       if (*in & 0x80) {
         int v = table[(int) (0x7f & *in++)];
         if (!v) {
@@ -169,6 +180,7 @@ class DlmsCosemTextSensor : public DlmsCosemSensorBase, public text_sensor::Text
       } else {
         *out++ = *in++;
       }
+    }
     *out = 0;
   }
 };

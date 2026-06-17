@@ -84,8 +84,13 @@ class DlmsCosemUart final : public uart::ESP8266UartComponent {
 
 class DlmsCosemUart final : public uart::IDFUARTComponent {
  public:
-  DlmsCosemUart(uart::IDFUARTComponent &uart)
-      : uart_(uart), iuart_num_(uart.*(&DlmsCosemUart::uart_num_)) {}
+  DlmsCosemUart(uart::UARTComponent &uart, bool is_ble_nus)
+      // Our BLE NUS client has no hardware UART port, so force the read_array() fallback
+      // path below. Any other parent is a real IDF hardware UART, as before.
+      : uart_(uart),
+        iuart_num_(is_ble_nus ? UART_NUM_MAX
+                              : static_cast<uart_port_t>(
+                                    static_cast<uart::IDFUARTComponent &>(uart).get_hw_serial_number())) {}
 
   // Reconfigure baudrate
   void update_baudrate(uint32_t baudrate) {
@@ -134,7 +139,7 @@ class DlmsCosemUart final : public uart::IDFUARTComponent {
     return true;
   }
 
-  uart::IDFUARTComponent &uart_;
+  uart::UARTComponent &uart_;
   uart_port_t iuart_num_;
 };
 #endif

@@ -1,7 +1,6 @@
 #include "dlms_cosem_helpers.h"
 #include <cstring>
-#include <sstream>
-#include <iomanip>
+#include <cstdio>
 
 namespace esphome {
 namespace dlms_cosem {
@@ -119,69 +118,57 @@ std::string dlms_datetime_as_string(const uint8_t *value_buffer_ptr, uint8_t val
   int16_t deviation = (int16_t) u_dev;
 
   // Clock status (1 byte)
-  uint8_t clock_status = buf[11];
+  // uint8_t clock_status = buf[11];
 
-  std::ostringstream ss;
+  // Format: YYYY-MM-DD HH:MM:SS[.hh][ +HH:MM] -> max ~29 chars, 40 is safe.
+  char out[40];
+  size_t pos = 0;
+  auto adv = [&](int n) {
+    if (n > 0 && pos + static_cast<size_t>(n) < sizeof(out))
+      pos += static_cast<size_t>(n);
+  };
 
-  // Format: YYYY-MM-DD HH:MM:SS
-  if (year != 0x0000 && year != 0xFFFF) {
-    ss << year;
-  } else {
-    ss << "????";
-  }
-  ss << "-";
+  if (year != 0x0000 && year != 0xFFFF)
+    adv(snprintf(out + pos, sizeof(out) - pos, "%04u", year));
+  else
+    adv(snprintf(out + pos, sizeof(out) - pos, "????"));
 
-  if (month != 0xFF && month >= 1 && month <= 12) {
-    ss << std::setfill('0') << std::setw(2) << (int) month;
-  } else {
-    ss << "??";
-  }
-  ss << "-";
+  if (month != 0xFF && month >= 1 && month <= 12)
+    adv(snprintf(out + pos, sizeof(out) - pos, "-%02u", month));
+  else
+    adv(snprintf(out + pos, sizeof(out) - pos, "-??"));
 
-  if (day != 0xFF && day >= 1 && day <= 31) {
-    ss << std::setfill('0') << std::setw(2) << (int) day;
-  } else {
-    ss << "??";
-  }
-  ss << " ";
+  if (day != 0xFF && day >= 1 && day <= 31)
+    adv(snprintf(out + pos, sizeof(out) - pos, "-%02u", day));
+  else
+    adv(snprintf(out + pos, sizeof(out) - pos, "-??"));
 
-  if (hour != 0xFF && hour <= 23) {
-    ss << std::setfill('0') << std::setw(2) << (int) hour;
-  } else {
-    ss << "??";
-  }
-  ss << ":";
+  if (hour != 0xFF && hour <= 23)
+    adv(snprintf(out + pos, sizeof(out) - pos, " %02u", hour));
+  else
+    adv(snprintf(out + pos, sizeof(out) - pos, " ??"));
 
-  if (minute != 0xFF && minute <= 59) {
-    ss << std::setfill('0') << std::setw(2) << (int) minute;
-  } else {
-    ss << "??";
-  }
-  ss << ":";
+  if (minute != 0xFF && minute <= 59)
+    adv(snprintf(out + pos, sizeof(out) - pos, ":%02u", minute));
+  else
+    adv(snprintf(out + pos, sizeof(out) - pos, ":??"));
 
-  if (second != 0xFF && second <= 59) {
-    ss << std::setfill('0') << std::setw(2) << (int) second;
-  } else {
-    ss << "??";
-  }
+  if (second != 0xFF && second <= 59)
+    adv(snprintf(out + pos, sizeof(out) - pos, ":%02u", second));
+  else
+    adv(snprintf(out + pos, sizeof(out) - pos, ":??"));
 
   // Add hundredths if available
-  if (hundredths != 0xFF && hundredths <= 99) {
-    ss << "." << std::setfill('0') << std::setw(2) << (int) hundredths;
-  }
+  if (hundredths != 0xFF && hundredths <= 99)
+    adv(snprintf(out + pos, sizeof(out) - pos, ".%02u", hundredths));
 
   // Add timezone info if available
   if (deviation != (int16_t) 0x8000) {
-    if (deviation >= 0) {
-      ss << " +" << std::setfill('0') << std::setw(2) << (deviation / 60);
-      ss << ":" << std::setfill('0') << std::setw(2) << (deviation % 60);
-    } else {
-      ss << " -" << std::setfill('0') << std::setw(2) << ((-deviation) / 60);
-      ss << ":" << std::setfill('0') << std::setw(2) << ((-deviation) % 60);
-    }
+    int abs_dev = deviation >= 0 ? deviation : -deviation;
+    adv(snprintf(out + pos, sizeof(out) - pos, " %c%02d:%02d", deviation >= 0 ? '+' : '-', abs_dev / 60, abs_dev % 60));
   }
 
-  return ss.str();
+  return std::string(out, pos);
 }
 
 std::string dlms_data_as_string(DLMS_DATA_TYPE value_type, const uint8_t *value_buffer_ptr, uint8_t value_length) {
@@ -189,14 +176,14 @@ std::string dlms_data_as_string(DLMS_DATA_TYPE value_type, const uint8_t *value_
     return std::string();
 
   auto hex_of = [](const uint8_t *p, uint8_t len) -> std::string {
-    std::ostringstream ss;
-    ss << std::hex << std::setfill('0');
+    char out[2 * 255 + 1];  // len is uint8_t -> at most 255 bytes -> 510 hex chars + NUL
+    size_t pos = 0;
     for (uint8_t i = 0; i < len; i++) {
-      ss << std::setw(2) << static_cast<int>(p[i]);
-      if (i + 1 < len)
-        ss << "";  // compact
+      int n = snprintf(out + pos, sizeof(out) - pos, "%02x", p[i]);
+      if (n > 0)
+        pos += static_cast<size_t>(n);
     }
-    return ss.str();
+    return std::string(out, pos);
   };
 
   switch (value_type) {
@@ -270,10 +257,10 @@ std::string dlms_data_as_string(DLMS_DATA_TYPE value_type, const uint8_t *value_
     case DLMS_DATA_TYPE_FLOAT32:
     case DLMS_DATA_TYPE_FLOAT64: {
       float f = dlms_data_as_float(value_type, value_buffer_ptr, value_length);
-      // Use minimal formatting
-      std::ostringstream ss;
-      ss << f;
-      return ss.str();
+      // Use minimal formatting (%g matches the old shortest-form output)
+      char out[32];
+      snprintf(out, sizeof(out), "%g", f);
+      return std::string(out);
     }
     case DLMS_DATA_TYPE_DATETIME:
       return dlms_datetime_as_string(value_buffer_ptr, value_length);
