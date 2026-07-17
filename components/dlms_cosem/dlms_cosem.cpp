@@ -4,6 +4,7 @@
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include <cinttypes>
 #ifdef USE_ESP_IDF
 #include <esp_heap_caps.h>
 #endif
@@ -114,7 +115,7 @@ uint8_t baud_rate_to_byte(uint32_t baud) {
 */
 
 void DlmsCosemComponent::set_baud_rate_(uint32_t baud_rate) {
-  ESP_LOGV(TAG, "Setting baud rate %u bps", baud_rate);
+  ESP_LOGV(TAG, "Setting baud rate %" PRIu32 " bps", baud_rate);
   iuart_->update_baudrate(baud_rate);
 }
 
@@ -159,13 +160,7 @@ void DlmsCosemComponent::setup() {
 
   this->indicate_transmission(false);
 
-#ifdef USE_ESP32
-  iuart_ = make_unique<DlmsCosemUart>(*this->parent_, this->uart_is_ble_nus_);
-#endif
-
-#if USE_ESP8266
-  iuart_ = make_unique<DlmsCosemUart>(*static_cast<uart::ESP8266UartComponent *>(this->parent_));
-#endif
+  iuart_ = make_unique<DlmsCosemUart>(this->parent_, this->uart_is_ble_nus_);
   if (this->flow_control_pin_ != nullptr) {
     this->flow_control_pin_->setup();
   }
@@ -224,7 +219,7 @@ void DlmsCosemComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "DLMS-COSEM (SPODES):");
   LOG_UPDATE_INTERVAL(this);
   LOG_PIN("  Flow Control Pin: ", this->flow_control_pin_);
-  ESP_LOGCONFIG(TAG, "  Receive Timeout: %ums", this->receive_timeout_ms_);
+  ESP_LOGCONFIG(TAG, "  Receive Timeout: %" PRIu32 "ms", this->receive_timeout_ms_);
   ESP_LOGCONFIG(TAG, "  Supported Meter Types: DLMS/COSEM (SPODES)");
   ESP_LOGCONFIG(TAG, "  Client address: %d", this->client_address_);
   ESP_LOGCONFIG(TAG, "  Server address: %d", this->server_address_);
@@ -724,15 +719,15 @@ void DlmsCosemComponent::handle_publish_() {
 
       int32_t diff = this->last_free_heap_ - h;
       if (diff == 0 || this->last_free_heap_ == 0) {
-        ESP_LOGV(TAG, "Free heap: %d; stable", h);
+        ESP_LOGV(TAG, "Free heap: %" PRIu32 "; stable", h);
       } else {
-        ESP_LOGW(TAG, "Free heap: %d; diff %d", h, diff);
+        ESP_LOGW(TAG, "Free heap: %" PRIu32 "; diff %" PRId32, h, diff);
       }
       this->last_free_heap_ = h;
     }
 
     this->set_next_state_(State::IDLE);
-    ESP_LOGD(TAG, "Total time: %u ms", millis() - this->loop_state_.session_started_ms);
+    ESP_LOGD(TAG, "Total time: %" PRIu32 " ms", millis() - this->loop_state_.session_started_ms);
   }
 }
 
@@ -763,7 +758,7 @@ void DlmsCosemComponent::set_next_state_delayed_(uint32_t ms, State next_state) 
   if (ms == 0) {
     set_next_state_(next_state);
   } else {
-    ESP_LOGV(TAG, "Short delay for %u ms", ms);
+    ESP_LOGV(TAG, "Short delay for %" PRIu32 " ms", ms);
     set_next_state_(State::WAIT);
     wait_.start_time = millis();
     wait_.delay_ms = ms;
@@ -1316,10 +1311,10 @@ void DlmsCosemComponent::log_state_(State *next_state) {
 void DlmsCosemComponent::stats_dump() {
   ESP_LOGV(TAG, "============================================");
   ESP_LOGV(TAG, "Data collection and publishing finished.");
-  ESP_LOGV(TAG, "Total number of sessions ............. %u", this->stats_.connections_tried_);
-  ESP_LOGV(TAG, "Total number of invalid frames ....... %u", this->stats_.invalid_frames_);
-  ESP_LOGV(TAG, "Total number of CRC errors ........... %u", this->stats_.crc_errors_);
-  ESP_LOGV(TAG, "Total number of CRC errors recovered . %u", this->stats_.crc_errors_recovered_);
+  ESP_LOGV(TAG, "Total number of sessions ............. %" PRIu32, this->stats_.connections_tried_);
+  ESP_LOGV(TAG, "Total number of invalid frames ....... %" PRIu32, this->stats_.invalid_frames_);
+  ESP_LOGV(TAG, "Total number of CRC errors ........... %" PRIu32, this->stats_.crc_errors_);
+  ESP_LOGV(TAG, "Total number of CRC errors recovered . %" PRIu32, this->stats_.crc_errors_recovered_);
   ESP_LOGV(TAG, "CRC errors per session ............... %f", this->stats_.crc_errors_per_session());
   ESP_LOGV(TAG, "Number of failures ................... %u", this->stats_.failures_);
   ESP_LOGV(TAG, "============================================");
