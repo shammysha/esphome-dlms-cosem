@@ -1,148 +1,58 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 
-#ifdef USE_ESP32
-#include "esphome/components/uart/uart_component_esp_idf.h"
-#include "esphome/core/log.h"
-#endif
-
-#ifdef USE_ESP8266
-#include "esphome/components/uart/uart_component_esp8266.h"
-#endif
+#include "esphome/components/uart/uart.h"
+#include "esphome/core/hal.h"
 
 namespace esphome {
 namespace dlms_cosem {
 
-static const uint32_t TIMEOUT = 20;  // default value in uart implementation is 100ms
+static const uint32_t TIMEOUT = 20;  // ms; default timeout in the uart implementation is 100ms
 
-#ifdef USE_ESP8266
-
-class XSoftSerial : public uart::ESP8266SoftwareSerial {
+// Thin helper around the configured UART bus.
+//
+// It exists only to (a) change the baud rate at runtime -- the IEC/DLMS handshake negotiates a new
+// speed in the middle of a session -- and (b) read a single byte with a short timeout instead of
+// the default 100ms. Everything goes through the public UARTComponent API, so the same wrapper
+// works for a real hardware UART (ESP-IDF, ESP8266) and for a BLE NUS-backed UART, without any
+// assumptions about the concrete driver.
+class DlmsCosemUart {
  public:
-  void set_bit_time(uint32_t bt) { bit_time_ = bt; }
-};
+  // is_ble_nus: the parent is a BLE NUS link with no hardware UART, so baud rate cannot be changed.
+  explicit DlmsCosemUart(uart::UARTComponent *parent, bool is_ble_nus = false)
+      : parent_(parent), is_ble_nus_(is_ble_nus) {}
 
-class DlmsCosemUart final : public uart::ESP8266UartComponent {
- public:
-  DlmsCosemUart(uart::ESP8266UartComponent const &uart)
-      : uart_(uart), hw_(uart.*(&DlmsCosemUart::hw_serial_)), sw_(uart.*(&DlmsCosemUart::sw_serial_)) {}
-
+  // Reconfigure the bus to a new baud rate. No-op for BLE, which has no notion of baud rate.
   void update_baudrate(uint32_t baudrate) {
-    if (this->hw_ != nullptr) {
-      this->hw_->updateBaudRate(baudrate);
-    } else if (baudrate > 0) {
-      ((XSoftSerial *) sw_)->set_bit_time(F_CPU / baudrate);
-    }
+    if (this->is_ble_nus_)
+      return;
+    this->parent_->set_baud_rate(baudrate);
+    this->parent_->load_settings(false);
   }
 
+  // Read one byte, waiting at most TIMEOUT ms for it to arrive.
   bool read_one_byte(uint8_t *data) {
-    if (this->hw_ != nullptr) {
-      if (!this->check_read_timeout_quick_(1))
-        return false;
-      this->hw_->readBytes(data, 1);
-    } else {
-      if (sw_->available() < 1)
-        return false;
-      assert(this->sw_ != nullptr);
-      optional<uint8_t> b = this->sw_->read_byte();
-      if (b) {
-        *data = *b;
-      } else {
-        return false;
-      }
-    }
-    return true;
-  }
-
- protected:
-  bool check_read_timeout_quick_(size_t len) {
-    if (this->hw_->available() >= int(len))
-      return true;
-
-    uint32_t start_time = millis();
-    while (this->hw_->available() < int(len)) {
-      if (millis() - start_time > TIMEOUT) {
-        return false;
-      }
-      yield();
-    }
-    return true;
-  }
-
-  uart::ESP8266UartComponent const &uart_;
-  HardwareSerial *const hw_;               // hardware Serial
-  uart::ESP8266SoftwareSerial *const sw_;  // software serial
-};
-#endif
-
-#ifdef USE_ESP32
-
-// backward compatibility with old IDF versions
-#ifndef portTICK_PERIOD_MS
-#define portTICK_PERIOD_MS portTICK_RATE_MS
-#endif
-
-class DlmsCosemUart final : public uart::IDFUARTComponent {
- public:
-  DlmsCosemUart(uart::UARTComponent &uart, bool is_ble_nus)
-      // Our BLE NUS client has no hardware UART port, so force the read_array() fallback
-      // path below. Any other parent is a real IDF hardware UART, as before.
-      : uart_(uart),
-        iuart_num_(is_ble_nus ? UART_NUM_MAX
-                              : static_cast<uart_port_t>(
-                                    static_cast<uart::IDFUARTComponent &>(uart).get_hw_serial_number())) {}
-
-  // Reconfigure baudrate
-  void update_baudrate(uint32_t baudrate) {
-    uart_set_baudrate(iuart_num_, baudrate);
-  }
-
-  bool read_one_byte(uint8_t *data) { return read_array_quick_(data, 1); }
-
- protected:
-  bool check_read_timeout_quick_(size_t len) {
-    if (uart_.available() >= int(len))
-      return true;
-
-    uint32_t start_time = millis();
-    while (uart_.available() < int(len)) {
-      if (millis() - start_time > TIMEOUT) {
-        return false;
-      }
-      yield();
-    }
-    return true;
-  }
-
-  bool read_array_quick_(uint8_t *data, size_t len) {
-    size_t length_to_read = len;
-    if (!this->check_read_timeout_quick_(len))
+    if (!this->wait_for_data_(1))
       return false;
+    return this->parent_->read_byte(data);
+  }
 
-    if (this->has_peek_) {
-      length_to_read--;
-      *data = this->peek_byte_;
-      data++;
-      this->has_peek_ = false;
-    }
-    if (length_to_read > 0) {
-      // If no valid hardware UART, fall back to base read_array (e.g., BLE-backed UART)
-      if (this->iuart_num_ < UART_NUM_0 || this->iuart_num_ >= UART_NUM_MAX) {
-        if (!uart_.read_array(data, length_to_read)) {
-          return false;
-        }
-      } else {
-        uart_read_bytes(this->iuart_num_, data, length_to_read, 20 / portTICK_PERIOD_MS);
+ protected:
+  bool wait_for_data_(size_t len) {
+    uint32_t start_time = millis();
+    while (this->parent_->available() < len) {
+      if (millis() - start_time > TIMEOUT) {
+        return false;
       }
+      yield();
     }
-
     return true;
   }
 
-  uart::UARTComponent &uart_;
-  uart_port_t iuart_num_;
+  uart::UARTComponent *parent_;
+  bool is_ble_nus_;
 };
-#endif
 
 }  // namespace dlms_cosem
 }  // namespace esphome
