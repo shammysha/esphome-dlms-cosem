@@ -3,6 +3,9 @@
 #include "axdr_parser.h"
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
+#if __has_include("esphome/core/alloc_helpers.h")
+#include "esphome/core/alloc_helpers.h"
+#endif
 #include "esphome/core/log.h"
 #include <cinttypes>
 #ifdef USE_ESP_IDF
